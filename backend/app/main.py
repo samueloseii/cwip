@@ -57,9 +57,24 @@ STATIC_DIR = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
 if STATIC_DIR.is_dir():
     app.mount("/assets", StaticFiles(directory=str(STATIC_DIR / "assets")), name="static")
 
-    @app.get("/{full_path:path}")
-    async def serve_spa(request: Request, full_path: str):
-        file_path = STATIC_DIR / full_path
-        if file_path.is_file():
-            return FileResponse(str(file_path))
-        return FileResponse(str(STATIC_DIR / "index.html"))
+    # Serve individual static files (manifest, SW, icons) at their exact paths
+    for static_file in STATIC_DIR.iterdir():
+        if static_file.is_file() and static_file.name != "index.html":
+            _name = static_file.name
+
+            def _make_handler(fpath: Path):
+                async def _handler():
+                    return FileResponse(str(fpath))
+                return _handler
+
+            app.get(f"/{_name}", include_in_schema=False)(_make_handler(static_file))
+
+    # SPA fallback — catch any remaining GET that didn't match an API route
+    from starlette.exceptions import HTTPException as StarletteHTTPException
+
+    @app.exception_handler(404)
+    async def spa_fallback(request: Request, exc: StarletteHTTPException):
+        if request.method == "GET" and not request.url.path.startswith("/api"):
+            return FileResponse(str(STATIC_DIR / "index.html"))
+        from fastapi.responses import JSONResponse
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
