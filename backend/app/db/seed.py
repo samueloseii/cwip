@@ -93,6 +93,29 @@ def _seed_data(db: Session):
         db.add(u)
     db.flush()
 
+    # Community operator users (technician / treasurer per community)
+    for ci, community in enumerate(communities[:6]):
+        slug = community.name.lower().replace(" ", "")[:10]
+        op = User(
+            email=f"operator{ci+1}@cwip.org",
+            hashed_password=get_password_hash("operator123"),
+            full_name=f"Operator - {community.name}",
+            role=UserRole.OPERATOR,
+            partner_id=community.partner_id,
+            community_id=community.id,
+        )
+        db.add(op)
+        tr = User(
+            email=f"treasurer{ci+1}@cwip.org",
+            hashed_password=get_password_hash("treasurer123"),
+            full_name=f"Treasurer - {community.name}",
+            role=UserRole.TREASURER,
+            partner_id=community.partner_id,
+            community_id=community.id,
+        )
+        db.add(tr)
+    db.flush()
+
     # Households, meters, readings, invoices, payments for first 3 communities (demo)
     now = datetime.now(timezone.utc)
     names_pool = [
