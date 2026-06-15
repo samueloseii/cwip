@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import {
-  BarChart3,
   AlertTriangle,
   TrendingDown,
   Wrench,

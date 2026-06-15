@@ -75,9 +75,12 @@ export default function LoginPage() {
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
 
-          <p className="text-center text-xs text-gray-400 mt-4">
-            Demo: admin@cwip.org / admin123
-          </p>
+          <div className="text-center text-xs text-gray-400 mt-4 space-y-1">
+            <p className="font-medium text-gray-500">Demo Accounts</p>
+            <p>Admin: admin@cwip.org / admin123</p>
+            <p>Operator: operator1@cwip.org / operator123</p>
+            <p>Treasurer: treasurer1@cwip.org / treasurer123</p>
+          </div>
         </form>
       </div>
     </div>

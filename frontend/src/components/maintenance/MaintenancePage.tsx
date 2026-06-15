@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Wrench, Plus, AlertTriangle } from 'lucide-react'
+import { Wrench, Plus } from 'lucide-react'
 import api from '../../services/api'
 
 interface MaintenanceData {

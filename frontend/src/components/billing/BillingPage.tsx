@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Receipt, DollarSign } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Receipt, DollarSign, Printer } from 'lucide-react'
 import api from '../../services/api'
 
 interface InvoiceData {
@@ -21,6 +22,7 @@ export default function BillingPage() {
   const [invoices, setInvoices] = useState<InvoiceData[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'invoices' | 'payments'>('invoices')
+  const navigate = useNavigate()
 
   useEffect(() => {
     api.get('/billing/invoices')
@@ -83,6 +85,7 @@ export default function BillingPage() {
                 <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase">Paid</th>
                 <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase">Balance</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase">Bill</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -104,6 +107,15 @@ export default function BillingPage() {
                     <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusColor[inv.status] || 'bg-gray-100'}`}>
                       {inv.status}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <button
+                      onClick={() => navigate(`/billing/print?invoice=${inv.id}`)}
+                      className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                      title="Print bill"
+                    >
+                      <Printer className="h-4 w-4" />
+                    </button>
                   </td>
                 </tr>
               ))}
