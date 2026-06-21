@@ -44,7 +44,10 @@ export default function FieldDashboard({ onNavigate }: Props) {
   }, [])
 
   useEffect(() => {
-    if (!user?.community_id) return
+    if (!user?.community_id) {
+      setLoading(false)
+      return
+    }
     Promise.all([
       api.get(`/communities/${user.community_id}`),
       api.get(`/households/?community_id=${user.community_id}`),
@@ -61,6 +64,26 @@ export default function FieldDashboard({ onNavigate }: Props) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+      </div>
+    )
+  }
+
+  if (!user?.community_id) {
+    return (
+      <div className="max-w-lg mx-auto">
+        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm mb-4 ${online ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
+          {online ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
+          {online ? 'Online — data syncs automatically' : 'Offline — data saved locally, will sync when online'}
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 p-8 text-center">
+          <Gauge className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+          <h2 className="text-lg font-medium text-gray-700">No Community Assigned</h2>
+          <p className="text-gray-500 mt-2">Your account has not been assigned to a community yet. Contact your administrator to get started.</p>
+        </div>
+        <div className="mt-6 bg-gray-50 rounded-xl p-4 text-sm text-gray-600">
+          <p className="font-medium text-gray-700 mb-1">Welcome, {user?.full_name}</p>
+          <p>Once a community is assigned to your account, you will be able to record meter readings and payments here.</p>
+        </div>
       </div>
     )
   }
