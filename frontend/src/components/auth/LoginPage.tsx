@@ -50,7 +50,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-              placeholder="admin@cwip.org"
+              placeholder="Enter your email"
               required
             />
           </div>
@@ -75,12 +75,9 @@ export default function LoginPage() {
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
 
-          <div className="text-center text-xs text-gray-400 mt-4 space-y-1">
-            <p className="font-medium text-gray-500">Demo Accounts</p>
-            <p>Admin: admin@cwip.org / admin123</p>
-            <p>Operator: operator1@cwip.org / operator123</p>
-            <p>Treasurer: treasurer1@cwip.org / treasurer123</p>
-          </div>
+          <p className="text-center text-xs text-gray-400 mt-4">
+            Contact your administrator if you need access.
+          </p>
         </form>
       </div>
     </div>
