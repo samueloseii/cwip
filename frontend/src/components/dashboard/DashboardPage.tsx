@@ -77,36 +77,36 @@ export default function DashboardPage() {
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
           <MapPin className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <h2 className="text-lg font-medium text-gray-700">Getting Started</h2>
-          <p className="text-gray-500 mt-2">Add your first partner and community to begin tracking water systems.</p>
+          <h2 className="text-lg font-medium text-gray-700">No Data Yet</h2>
+          <p className="text-gray-500 mt-2">Data will appear here once field operators begin recording meter readings.</p>
         </div>
       )}
 
       <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+          <h3 className="text-lg font-semibold mb-4">View Reports</h3>
           <div className="space-y-3">
-            <a href="/meters" className="block px-4 py-3 bg-primary-50 rounded-lg text-primary-700 hover:bg-primary-100 transition-colors">
-              Record Meter Readings
+            <a href="/communities" className="block px-4 py-3 bg-gray-50 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+              Communities Overview
             </a>
-            <a href="/billing" className="block px-4 py-3 bg-primary-50 rounded-lg text-primary-700 hover:bg-primary-100 transition-colors">
-              Generate Invoices
+            <a href="/households" className="block px-4 py-3 bg-gray-50 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+              Household Records
             </a>
-            <a href="/maintenance" className="block px-4 py-3 bg-primary-50 rounded-lg text-primary-700 hover:bg-primary-100 transition-colors">
-              Report Maintenance Issue
+            <a href="/billing" className="block px-4 py-3 bg-gray-50 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+              Billing &amp; Payments
             </a>
-            <a href="/analytics" className="block px-4 py-3 bg-primary-50 rounded-lg text-primary-700 hover:bg-primary-100 transition-colors">
-              View AI Analytics
+            <a href="/analytics" className="block px-4 py-3 bg-gray-50 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+              Analytics &amp; Insights
             </a>
           </div>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h3 className="text-lg font-semibold mb-4">Platform Info</h3>
+          <h3 className="text-lg font-semibold mb-4">System Status</h3>
           <div className="space-y-3 text-sm text-gray-600">
             <div className="flex justify-between py-2 border-b border-gray-50">
-              <span>Version</span>
-              <span className="font-medium">1.0.0</span>
+              <span>Platform</span>
+              <span className="font-medium">CWIP v1.0</span>
             </div>
             <div className="flex justify-between py-2 border-b border-gray-50">
               <span>Communities</span>
@@ -116,9 +116,13 @@ export default function DashboardPage() {
               <span>Partners</span>
               <span className="font-medium">{data?.total_partners ?? 0}</span>
             </div>
-            <div className="flex justify-between py-2">
-              <span>Users</span>
+            <div className="flex justify-between py-2 border-b border-gray-50">
+              <span>Active Users</span>
               <span className="font-medium">{data?.total_users ?? 0}</span>
+            </div>
+            <div className="flex justify-between py-2">
+              <span>Status</span>
+              <span className="font-medium text-green-600">Operational</span>
             </div>
           </div>
         </div>
