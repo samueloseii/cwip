@@ -77,12 +77,9 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
-          <Wrench className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <h2 className="text-lg font-medium text-gray-700">No Data Available</h2>
-          <p className="text-gray-500 mt-2">Run the database seed script to populate demo data.</p>
-          <code className="block bg-gray-100 rounded-lg p-3 mt-4 text-sm text-gray-600">
-            cd backend && python -m app.db.seed
-          </code>
+          <MapPin className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+          <h2 className="text-lg font-medium text-gray-700">Getting Started</h2>
+          <p className="text-gray-500 mt-2">Add your first partner and community to begin tracking water systems.</p>
         </div>
       )}
 
@@ -110,19 +107,19 @@ export default function DashboardPage() {
           <div className="space-y-3 text-sm text-gray-600">
             <div className="flex justify-between py-2 border-b border-gray-50">
               <span>Version</span>
-              <span className="font-medium">0.1.0 (Pilot MVP)</span>
+              <span className="font-medium">1.0.0</span>
             </div>
             <div className="flex justify-between py-2 border-b border-gray-50">
-              <span>Countries</span>
-              <span className="font-medium">Nicaragua, Ecuador, Honduras</span>
+              <span>Communities</span>
+              <span className="font-medium">{data?.total_communities ?? 0}</span>
             </div>
             <div className="flex justify-between py-2 border-b border-gray-50">
               <span>Partners</span>
-              <span className="font-medium">FEDICAMP, ALTROPICO, AVODEC, ASOMAINCUPACO</span>
+              <span className="font-medium">{data?.total_partners ?? 0}</span>
             </div>
             <div className="flex justify-between py-2">
-              <span>Target Communities</span>
-              <span className="font-medium">12</span>
+              <span>Users</span>
+              <span className="font-medium">{data?.total_users ?? 0}</span>
             </div>
           </div>
         </div>
