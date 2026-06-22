@@ -19,7 +19,8 @@ router = APIRouter(prefix="/sync", tags=["sync"])
 
 class SyncMeterReading(BaseModel):
     client_id: str
-    meter_id: uuid.UUID
+    meter_id: uuid.UUID | None = None
+    household_name: str | None = None
     reading_value: float
     reading_date: datetime
     notes: str | None = None
@@ -72,31 +73,50 @@ def push_offline_data(
 
     for r in payload.readings:
         try:
-            meter = db.query(Meter).filter(Meter.id == r.meter_id).first()
-            if not meter:
-                reading_results.append(SyncResultItem(client_id=r.client_id, success=False, error="Meter not found"))
-                continue
+            if r.meter_id:
+                meter = db.query(Meter).filter(Meter.id == r.meter_id).first()
+                if not meter:
+                    reading_results.append(SyncResultItem(client_id=r.client_id, success=False, error="Meter not found"))
+                    continue
 
-            previous_value = meter.last_reading_value
-            consumption = max(0, r.reading_value - previous_value)
+                previous_value = meter.last_reading_value
+                consumption = max(0, r.reading_value - previous_value)
 
-            reading = MeterReading(
-                reading_value=r.reading_value,
-                previous_value=previous_value,
-                consumption_m3=round(consumption, 1),
-                reading_date=r.reading_date,
-                notes=r.notes,
-                recorded_by=r.recorded_by or current_user.full_name,
-                meter_id=r.meter_id,
-            )
-            db.add(reading)
-            meter.last_reading_value = r.reading_value
-            meter.last_reading_date = r.reading_date
-            db.flush()
+                reading = MeterReading(
+                    reading_value=r.reading_value,
+                    previous_value=previous_value,
+                    consumption_m3=round(consumption, 1),
+                    reading_date=r.reading_date,
+                    notes=r.notes,
+                    recorded_by=r.recorded_by or current_user.full_name,
+                    meter_id=r.meter_id,
+                )
+                db.add(reading)
+                meter.last_reading_value = r.reading_value
+                meter.last_reading_date = r.reading_date
+                db.flush()
 
-            reading_results.append(SyncResultItem(
-                client_id=r.client_id, server_id=str(reading.id), success=True,
-            ))
+                reading_results.append(SyncResultItem(
+                    client_id=r.client_id, server_id=str(reading.id), success=True,
+                ))
+            else:
+                # Simplified flow: just household name + reading value
+                # Store as a reading with notes containing household name
+                reading = MeterReading(
+                    reading_value=r.reading_value,
+                    previous_value=0,
+                    consumption_m3=r.reading_value,
+                    reading_date=r.reading_date,
+                    notes=f"Household: {r.household_name or 'Unknown'}",
+                    recorded_by=r.recorded_by or current_user.full_name,
+                    meter_id=None,
+                )
+                db.add(reading)
+                db.flush()
+
+                reading_results.append(SyncResultItem(
+                    client_id=r.client_id, server_id=str(reading.id), success=True,
+                ))
         except Exception as e:
             reading_results.append(SyncResultItem(client_id=r.client_id, success=False, error=str(e)))
 

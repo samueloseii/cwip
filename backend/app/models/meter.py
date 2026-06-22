@@ -65,12 +65,12 @@ class MeterReading(Base):
     is_estimated: Mapped[bool] = mapped_column(default=False)
     recorded_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
-    meter_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("meters.id")
+    meter_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("meters.id"), nullable=True
     )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
 
-    meter: Mapped["Meter"] = relationship(back_populates="readings")
+    meter: Mapped["Meter | None"] = relationship(back_populates="readings")
