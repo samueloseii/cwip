@@ -50,7 +50,7 @@ class MeterReadingResponse(BaseModel):
     notes: str | None
     is_estimated: bool
     recorded_by: str | None
-    meter_id: uuid.UUID
+    meter_id: uuid.UUID | None
     created_at: datetime
 
     class Config:
