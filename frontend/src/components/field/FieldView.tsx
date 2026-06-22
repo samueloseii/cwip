@@ -5,17 +5,24 @@ import { startAutoSync } from '../../services/syncService'
 import FieldDashboard from './FieldDashboard'
 import MeterReadingField from './MeterReadingField'
 import PaymentField from './PaymentField'
+import CommunitySetup from './CommunitySetup'
+import RegisterHousehold from './RegisterHousehold'
 
-type Page = 'home' | 'readings' | 'payments' | 'maintenance'
+type Page = 'home' | 'readings' | 'payments' | 'maintenance' | 'setup' | 'register'
 
 export default function FieldView() {
-  const { logout, user } = useAuth()
+  const { logout, user, refreshUser } = useAuth()
   const [page, setPage] = useState<Page>('home')
 
   useEffect(() => {
     const stop = startAutoSync()
     return stop
   }, [])
+
+  const handleSetupComplete = async () => {
+    await refreshUser()
+    setPage('home')
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -38,6 +45,12 @@ export default function FieldView() {
       <div className="p-4">
         {page === 'home' && (
           <FieldDashboard onNavigate={(p) => setPage(p)} />
+        )}
+        {page === 'setup' && (
+          <CommunitySetup onComplete={handleSetupComplete} />
+        )}
+        {page === 'register' && (
+          <RegisterHousehold onBack={() => setPage('home')} />
         )}
         {page === 'readings' && (
           <MeterReadingField onBack={() => setPage('home')} />

@@ -34,7 +34,7 @@ def create_household(
     payload: HouseholdCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(
-        require_role(UserRole.SUPER_ADMIN, UserRole.PARTNER_ADMIN, UserRole.COMMUNITY_ADMIN)
+        require_role(UserRole.SUPER_ADMIN, UserRole.PARTNER_ADMIN, UserRole.COMMUNITY_ADMIN, UserRole.OPERATOR)
     ),
 ):
     household = Household(**payload.model_dump())

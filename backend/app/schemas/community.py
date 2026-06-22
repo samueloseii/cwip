@@ -21,7 +21,7 @@ class CommunityCreate(BaseModel):
     tariff_fixed: float = 0.0
     tariff_per_m3: float = 0.0
     description: str | None = None
-    partner_id: uuid.UUID
+    partner_id: uuid.UUID | None = None
 
 
 class CommunityUpdate(BaseModel):
@@ -56,7 +56,7 @@ class CommunityResponse(BaseModel):
     tariff_fixed: float
     tariff_per_m3: float
     description: str | None
-    partner_id: uuid.UUID
+    partner_id: uuid.UUID | None
     created_at: datetime
     updated_at: datetime
 

@@ -37,12 +37,16 @@ def list_communities(
 def create_community(
     payload: CommunityCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.SUPER_ADMIN, UserRole.PARTNER_ADMIN)),
+    current_user: User = Depends(require_role(UserRole.SUPER_ADMIN, UserRole.PARTNER_ADMIN, UserRole.OPERATOR)),
 ):
     community = Community(**payload.model_dump())
     db.add(community)
     db.commit()
     db.refresh(community)
+    # Auto-assign community to operator
+    if current_user.role == UserRole.OPERATOR and not current_user.community_id:
+        current_user.community_id = community.id
+        db.commit()
     return community
 
 

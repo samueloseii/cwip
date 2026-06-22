@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Home, Plus, Search } from 'lucide-react'
+import { Home, Search } from 'lucide-react'
 import api from '../../services/api'
 
 interface Household {
@@ -43,12 +43,9 @@ export default function HouseholdsPage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Households</h1>
-          <p className="text-gray-500 mt-1">Manage household registrations and accounts</p>
+          <p className="text-gray-500 mt-1">View all household registrations and accounts</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
-          <Plus className="h-4 w-4" />
-          Register Household
-        </button>
+
       </div>
 
       <div className="mb-6 relative">
