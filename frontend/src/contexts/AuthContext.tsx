@@ -19,6 +19,7 @@ interface AuthState {
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<void>
   logout: () => void
+  refreshUser: () => Promise<void>
   isAdmin: boolean
   isOperator: boolean
 }
@@ -77,7 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isOperator = !!auth.user && OPERATOR_ROLES.includes(auth.user.role)
 
   return (
-    <AuthContext.Provider value={{ ...auth, login, logout, isAdmin, isOperator }}>
+    <AuthContext.Provider value={{ ...auth, login, logout, refreshUser: fetchUser, isAdmin, isOperator }}>
       {children}
     </AuthContext.Provider>
   )

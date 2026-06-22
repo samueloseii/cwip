@@ -46,8 +46,8 @@ class Community(Base):
     tariff_per_m3: Mapped[float] = mapped_column(Float, default=0.0)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    partner_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("partners.id")
+    partner_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("partners.id"), nullable=True
     )
 
     created_at: Mapped[datetime] = mapped_column(
@@ -59,7 +59,7 @@ class Community(Base):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    partner: Mapped["Partner"] = relationship(back_populates="communities")  # noqa: F821
+    partner: Mapped["Partner | None"] = relationship(back_populates="communities")  # noqa: F821
     households: Mapped[list["Household"]] = relationship(back_populates="community")  # noqa: F821
     users: Mapped[list["User"]] = relationship(back_populates="community")  # noqa: F821
     maintenance_records: Mapped[list["MaintenanceRecord"]] = relationship(  # noqa: F821
