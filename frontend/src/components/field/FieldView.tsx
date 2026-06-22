@@ -5,24 +5,17 @@ import { startAutoSync } from '../../services/syncService'
 import FieldDashboard from './FieldDashboard'
 import MeterReadingField from './MeterReadingField'
 import PaymentField from './PaymentField'
-import CommunitySetup from './CommunitySetup'
-import RegisterHousehold from './RegisterHousehold'
 
-type Page = 'home' | 'readings' | 'payments' | 'maintenance' | 'setup' | 'register'
+type Page = 'home' | 'readings' | 'payments' | 'maintenance'
 
 export default function FieldView() {
-  const { logout, user, refreshUser } = useAuth()
+  const { logout, user } = useAuth()
   const [page, setPage] = useState<Page>('home')
 
   useEffect(() => {
     const stop = startAutoSync()
     return stop
   }, [])
-
-  const handleSetupComplete = async () => {
-    await refreshUser()
-    setPage('home')
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -46,12 +39,6 @@ export default function FieldView() {
         {page === 'home' && (
           <FieldDashboard onNavigate={(p) => setPage(p)} />
         )}
-        {page === 'setup' && (
-          <CommunitySetup onComplete={handleSetupComplete} />
-        )}
-        {page === 'register' && (
-          <RegisterHousehold onBack={() => setPage('home')} />
-        )}
         {page === 'readings' && (
           <MeterReadingField onBack={() => setPage('home')} />
         )}
@@ -63,7 +50,6 @@ export default function FieldView() {
             <button onClick={() => setPage('home')} className="text-primary-600 text-sm mb-4">&larr; Back</button>
             <div className="bg-white rounded-xl border border-gray-100 p-6 text-center">
               <p className="text-gray-500">Maintenance reporting coming soon</p>
-              <p className="text-sm text-gray-400 mt-1">Use the admin dashboard to report issues for now</p>
             </div>
           </div>
         )}

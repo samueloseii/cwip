@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
-import { Gauge, DollarSign, Wrench, Wifi, WifiOff, ChevronRight, UserPlus, MapPin } from 'lucide-react'
+import { Gauge, DollarSign, Wrench, Wifi, WifiOff, ChevronRight } from 'lucide-react'
 import api from '../../services/api'
 
 interface CommunityInfo {
@@ -22,7 +22,7 @@ interface HouseholdInfo {
 }
 
 interface Props {
-  onNavigate: (page: 'readings' | 'payments' | 'maintenance' | 'setup' | 'register') => void
+  onNavigate: (page: 'readings' | 'payments' | 'maintenance') => void
 }
 
 export default function FieldDashboard({ onNavigate }: Props) {
@@ -76,19 +76,9 @@ export default function FieldDashboard({ onNavigate }: Props) {
           {online ? 'Online — data syncs automatically' : 'Offline — data saved locally, will sync when online'}
         </div>
         <div className="bg-white rounded-xl border border-gray-100 p-8 text-center">
-          <MapPin className="h-12 w-12 text-primary-300 mx-auto mb-4" />
-          <h2 className="text-lg font-medium text-gray-700">Welcome to CWIP</h2>
-          <p className="text-gray-500 mt-2">Set up your community to start recording meter readings and managing households.</p>
-          <button
-            onClick={() => onNavigate('setup')}
-            className="mt-6 px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors"
-          >
-            Set Up Community
-          </button>
-        </div>
-        <div className="mt-6 bg-gray-50 rounded-xl p-4 text-sm text-gray-600">
-          <p className="font-medium text-gray-700 mb-1">Welcome, {user?.full_name}</p>
-          <p>You only need to set up your community once. After that, you can register households and start recording readings.</p>
+          <Gauge className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+          <h2 className="text-lg font-medium text-gray-700">No Community Assigned</h2>
+          <p className="text-gray-500 mt-2">Your account has not been assigned to a community yet. Contact your administrator.</p>
         </div>
       </div>
     )
@@ -129,20 +119,6 @@ export default function FieldDashboard({ onNavigate }: Props) {
 
       {/* Action buttons — large touch targets for field use */}
       <div className="space-y-3">
-        <button
-          onClick={() => onNavigate('register')}
-          className="w-full flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-100 hover:border-primary-200 hover:bg-primary-50 transition-colors text-left"
-        >
-          <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center">
-            <UserPlus className="h-6 w-6 text-purple-600" />
-          </div>
-          <div className="flex-1">
-            <p className="font-semibold text-gray-900">Register Household</p>
-            <p className="text-sm text-gray-500">Add a new household to your community</p>
-          </div>
-          <ChevronRight className="h-5 w-5 text-gray-400" />
-        </button>
-
         <button
           onClick={() => onNavigate('readings')}
           className="w-full flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-100 hover:border-primary-200 hover:bg-primary-50 transition-colors text-left"
