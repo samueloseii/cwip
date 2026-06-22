@@ -22,7 +22,8 @@ function openDB(): Promise<IDBDatabase> {
 
 export interface OfflineReading {
   client_id: string
-  meter_id: string
+  meter_id?: string | null
+  household_name?: string
   reading_value: number
   reading_date: string
   notes?: string
