@@ -77,7 +77,7 @@ def _seed_data(db: Session):
 
     # Admin user
     admin = User(
-        email="admin@cwip.org", hashed_password=get_password_hash("admin123"),
+        email="admin@flow.org", hashed_password=get_password_hash("admin123"),
         full_name="FLOW Administrator", role=UserRole.SUPER_ADMIN,
     )
     db.add(admin)
@@ -97,7 +97,7 @@ def _seed_data(db: Session):
     for ci, community in enumerate(communities[:6]):
         slug = community.name.lower().replace(" ", "")[:10]
         op = User(
-            email=f"operator{ci+1}@cwip.org",
+            email=f"operator{ci+1}@flow.org",
             hashed_password=get_password_hash("operator123"),
             full_name=f"Operator - {community.name}",
             role=UserRole.OPERATOR,
@@ -106,7 +106,7 @@ def _seed_data(db: Session):
         )
         db.add(op)
         tr = User(
-            email=f"treasurer{ci+1}@cwip.org",
+            email=f"treasurer{ci+1}@flow.org",
             hashed_password=get_password_hash("treasurer123"),
             full_name=f"Treasurer - {community.name}",
             role=UserRole.TREASURER,

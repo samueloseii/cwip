@@ -40,8 +40,8 @@ npm run dev   # starts on http://localhost:3000
 ```
 
 ### Demo Login
-- **Operator:** `operator@cwip.org` / `operator123`
-- **Admin (view only):** `admin@cwip.org` / `admin123`
+- **Operator:** `operator@flow.org` / `operator123`
+- **Admin (view only):** `admin@flow.org` / `admin123`
 
 ### Docker
 ```bash
