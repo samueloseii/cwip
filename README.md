@@ -1,23 +1,14 @@
-# CWIP — Community Water Intelligence Platform
+# FLOW — Financial and Operational Water Management Platform
 
-A digital open-source operating system for rural community-managed water systems. Combines offline-first data collection, financial management, asset tracking, maintenance management, governance reporting, and AI-supported decision-making.
+An open-source digital platform designed to help community-managed rural water systems reduce Non-Revenue Water (NRW) while strengthening financial sustainability, governance, and service reliability.
+
+> **Prototype — Pilot Phase.** This is a working prototype developed for the RELX Environmental Challenge. It demonstrates core capabilities that will be evaluated during a 12-month pilot with 12 communities across Honduras, Nicaragua, and Ecuador.
 
 ## Architecture
 
 ```
-backend/          FastAPI + PostgreSQL + SQLAlchemy
-  app/
-    api/          REST endpoints (auth, communities, households, meters, billing, maintenance, dashboard, analytics)
-    ai/           AI analytics module (payment risk, anomaly detection, maintenance prioritization)
-    models/       SQLAlchemy ORM models
-    schemas/      Pydantic request/response schemas
-    core/         Config, security, JWT auth
-    db/           Database session, seed data
-frontend/         React + TypeScript + Tailwind CSS + Vite
-  src/
-    components/   Dashboard, communities, households, meters, billing, maintenance, analytics pages
-    contexts/     Auth context
-    services/     API client (axios)
+backend/          API server and database layer
+frontend/         Web application (works on phones, tablets, and computers)
 ```
 
 ## Quick Start
@@ -49,25 +40,25 @@ npm run dev   # starts on http://localhost:3000
 ```
 
 ### Demo Login
-- **Email:** `admin@cwip.org`
-- **Password:** `admin123`
+- **Operator:** `operator@cwip.org` / `operator123`
+- **Admin (view only):** `admin@cwip.org` / `admin123`
 
 ### Docker
 ```bash
 docker-compose up -d
 ```
 
-## Key Features
+## Key Capabilities
 
-| Module | Description |
-|--------|-------------|
-| **Communities** | Register and manage water systems across countries |
-| **Households** | Track connections, account status, outstanding balances |
-| **Meters** | Record readings, calculate consumption |
-| **Billing** | Generate invoices, record payments, track collection rates |
-| **Maintenance** | Log issues, prioritize by urgency, track resolution |
-| **AI Analytics** | Payment risk scoring, consumption anomaly detection, maintenance prioritization, financial sustainability alerts |
-| **Dashboard** | System-wide, partner-level, and community-level KPIs |
+| Capability | Benefit |
+|------------|--------|
+| **Meter reading collection** | Accurate consumption data for billing and loss detection |
+| **Works without internet** | Operators can collect data anywhere; syncs automatically when connectivity returns |
+| **Separate operator/admin roles** | Natural checks and balances that strengthen governance |
+| **Payment and billing tracking** | Monitor arrears and revenue collection by household |
+| **Community dashboard** | Real-time visibility into operational and financial status |
+| **Consumption anomaly detection** | Identify unusual usage that may indicate leaks or meter errors |
+| **Maintenance prioritization** | Recommendations to reduce breakdowns and extend system life |
 
 ## Pilot Scope
 
