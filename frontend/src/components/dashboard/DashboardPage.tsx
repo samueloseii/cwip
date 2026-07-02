@@ -55,7 +55,8 @@ export default function DashboardPage() {
     <div>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500 mt-1">Community water system overview — Pilot</p>
+        <p className="text-gray-500 mt-1">Community water system overview</p>
+        <span className="inline-block mt-1 px-2.5 py-0.5 bg-amber-50 text-amber-700 text-xs font-medium rounded-full border border-amber-200">Prototype — Pilot Phase</span>
       </div>
 
       {data ? (
@@ -102,7 +103,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h3 className="text-lg font-semibold mb-4">System Status</h3>
+          <h3 className="text-lg font-semibold mb-4">Pilot Status</h3>
           <div className="space-y-3 text-sm text-gray-600">
             <div className="flex justify-between py-2 border-b border-gray-50">
               <span>Platform</span>

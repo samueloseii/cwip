@@ -33,7 +33,8 @@ export default function LoginPage() {
             <Droplets className="h-8 w-8 text-primary-600" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">FLOW</h1>
-          <p className="text-gray-500 mt-1">Community Water Management — Pilot</p>
+          <p className="text-gray-500 mt-1">Community Water Management</p>
+          <span className="inline-block mt-2 px-3 py-1 bg-amber-50 text-amber-700 text-xs font-medium rounded-full border border-amber-200">Prototype — Pilot Phase</span>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -77,6 +78,9 @@ export default function LoginPage() {
 
           <p className="text-center text-xs text-gray-400 mt-4">
             Contact your administrator if you need access.
+          </p>
+          <p className="text-center text-xs text-gray-300 mt-2">
+            RELX Environmental Challenge — Green Empowerment
           </p>
         </form>
       </div>

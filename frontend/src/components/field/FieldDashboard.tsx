@@ -70,7 +70,7 @@ export default function FieldDashboard({ onNavigate }: Props) {
 
       {/* Info */}
       <div className="mt-8 bg-gray-50 rounded-xl p-4 text-sm text-gray-600">
-        <p>Data is saved locally on your device and syncs automatically when you have internet connection.</p>
+        <p>Your data is saved even without internet. It will sync automatically when you reconnect.</p>
       </div>
     </div>
   )
