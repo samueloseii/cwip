@@ -32,8 +32,8 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full mb-4">
             <Droplets className="h-8 w-8 text-primary-600" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">CWIP</h1>
-          <p className="text-gray-500 mt-1">Community Water Intelligence Platform</p>
+          <h1 className="text-2xl font-bold text-gray-900">FLOW</h1>
+          <p className="text-gray-500 mt-1">Community Water Management — Pilot</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
