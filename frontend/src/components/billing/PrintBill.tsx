@@ -68,8 +68,8 @@ export default function PrintBill() {
           <div className="flex items-center gap-3">
             <Droplets className="h-8 w-8 text-primary-600" />
             <div>
-              <h1 className="text-xl font-bold text-gray-900">CWIP</h1>
-              <p className="text-xs text-gray-500">Community Water Intelligence Platform</p>
+              <h1 className="text-xl font-bold text-gray-900">FLOW</h1>
+              <p className="text-xs text-gray-500">Community Water Management</p>
             </div>
           </div>
           <div className="text-right">

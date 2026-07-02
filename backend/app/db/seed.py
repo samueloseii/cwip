@@ -1,4 +1,4 @@
-"""Seed database with demo data for the CWIP pilot."""
+"""Seed database with demo data for the FLOW pilot."""
 
 import random
 from datetime import datetime, timedelta, timezone
@@ -78,7 +78,7 @@ def _seed_data(db: Session):
     # Admin user
     admin = User(
         email="admin@cwip.org", hashed_password=get_password_hash("admin123"),
-        full_name="CWIP Administrator", role=UserRole.SUPER_ADMIN,
+        full_name="FLOW Administrator", role=UserRole.SUPER_ADMIN,
     )
     db.add(admin)
 

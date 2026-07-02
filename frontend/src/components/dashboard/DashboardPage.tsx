@@ -55,7 +55,7 @@ export default function DashboardPage() {
     <div>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500 mt-1">Overview of the Community Water Intelligence Platform</p>
+        <p className="text-gray-500 mt-1">Community water system overview — Pilot</p>
       </div>
 
       {data ? (
@@ -106,7 +106,7 @@ export default function DashboardPage() {
           <div className="space-y-3 text-sm text-gray-600">
             <div className="flex justify-between py-2 border-b border-gray-50">
               <span>Platform</span>
-              <span className="font-medium">CWIP v1.0</span>
+              <span className="font-medium">FLOW Pilot v0.1</span>
             </div>
             <div className="flex justify-between py-2 border-b border-gray-50">
               <span>Communities</span>

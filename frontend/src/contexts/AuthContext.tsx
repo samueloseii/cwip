@@ -31,8 +31,8 @@ const OPERATOR_ROLES = ['operator', 'treasurer', 'reader']
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [auth, setAuth] = useState<AuthState>({
-    token: localStorage.getItem('cwip_token'),
-    isAuthenticated: !!localStorage.getItem('cwip_token'),
+    token: localStorage.getItem('flow_token'),
+    isAuthenticated: !!localStorage.getItem('flow_token'),
     user: null,
   })
 
@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAuth((prev) => ({ ...prev, user: res.data }))
     } catch {
       // token invalid — clear it
-      localStorage.removeItem('cwip_token')
+      localStorage.removeItem('flow_token')
       setAuth({ token: null, isAuthenticated: false, user: null })
     }
   }, [])
@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const res = await api.post('/auth/login', { email, password })
     const token = res.data.access_token
-    localStorage.setItem('cwip_token', token)
+    localStorage.setItem('flow_token', token)
     setAuth({ token, isAuthenticated: true, user: null })
     // Fetch user info right away
     try {
@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const logout = useCallback(() => {
-    localStorage.removeItem('cwip_token')
+    localStorage.removeItem('flow_token')
     setAuth({ token: null, isAuthenticated: false, user: null })
   }, [])
 

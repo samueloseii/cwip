@@ -23,7 +23,7 @@ export default function FieldView() {
       <header className="bg-primary-700 text-white px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Droplets className="h-6 w-6 text-primary-200" />
-          <span className="font-bold">CWIP</span>
+          <span className="font-bold">FLOW</span>
           <span className="text-primary-300 text-sm hidden sm:inline">Field Mode</span>
         </div>
         <div className="flex items-center gap-3">
