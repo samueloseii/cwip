@@ -40,6 +40,19 @@ class CommunityUpdate(BaseModel):
     description: str | None = None
 
 
+class HouseholdRecord(BaseModel):
+    household_id: uuid.UUID
+    account_number: str
+    head_of_household: str
+    status: str
+    outstanding_balance: float
+    meter_id: uuid.UUID | None = None
+    latest_reading_id: uuid.UUID | None = None
+    latest_reading_value: float | None = None
+    latest_reading_date: datetime | None = None
+    latest_consumption_m3: float | None = None
+
+
 class CommunityResponse(BaseModel):
     id: uuid.UUID
     name: str
