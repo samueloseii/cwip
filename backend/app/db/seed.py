@@ -93,9 +93,8 @@ def _seed_data(db: Session):
         db.add(u)
     db.flush()
 
-    # Community operator users (technician / treasurer per community)
+    # Community operator + community-admin/treasurer users (per community)
     for ci, community in enumerate(communities[:6]):
-        slug = community.name.lower().replace(" ", "")[:10]
         op = User(
             email=f"operator{ci+1}@flow.org",
             hashed_password=get_password_hash("operator123"),
@@ -114,6 +113,17 @@ def _seed_data(db: Session):
             community_id=community.id,
         )
         db.add(tr)
+
+    # Explicit demo community-admin account scoped to the first community.
+    community_admin = User(
+        email="community_admin@flow.org",
+        hashed_password=get_password_hash("community123"),
+        full_name=f"Community Admin - {communities[0].name}",
+        role=UserRole.COMMUNITY_ADMIN,
+        partner_id=communities[0].partner_id,
+        community_id=communities[0].id,
+    )
+    db.add(community_admin)
     db.flush()
 
     # Households, meters, readings, invoices, payments for first 3 communities (demo)
