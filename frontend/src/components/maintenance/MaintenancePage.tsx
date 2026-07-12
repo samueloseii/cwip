@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Wrench, Plus } from 'lucide-react'
+import { Wrench, Plus, X } from 'lucide-react'
 import api from '../../services/api'
+import { useAuth } from '../../contexts/AuthContext'
 
 interface MaintenanceData {
   id: string
@@ -15,15 +16,44 @@ interface MaintenanceData {
   community_id: string
 }
 
-export default function MaintenancePage() {
-  const [records, setRecords] = useState<MaintenanceData[]>([])
-  const [loading, setLoading] = useState(true)
+interface CommunityOption {
+  id: string
+  name: string
+  currency: string
+}
 
-  useEffect(() => {
+const CATEGORIES = [
+  'pipe_repair', 'valve_replacement', 'pump_maintenance', 'tank_cleaning',
+  'meter_repair', 'chlorination', 'electrical', 'infrastructure', 'other',
+]
+const PRIORITIES = ['low', 'medium', 'high', 'critical']
+
+export default function MaintenancePage() {
+  const { user } = useAuth()
+  const [records, setRecords] = useState<MaintenanceData[]>([])
+  const [communities, setCommunities] = useState<CommunityOption[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showReport, setShowReport] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [form, setForm] = useState({
+    title: '', description: '', category: 'other', priority: 'medium',
+    community_id: '', cost: '',
+  })
+
+  function load() {
+    setLoading(true)
     api.get('/maintenance/')
       .then((res) => setRecords(res.data))
       .catch(() => setRecords([]))
       .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    load()
+    api.get('/communities/')
+      .then((res) => setCommunities(res.data))
+      .catch(() => setCommunities([]))
   }, [])
 
   const priorityColor: Record<string, string> = {
@@ -40,6 +70,44 @@ export default function MaintenancePage() {
     deferred: 'bg-gray-100 text-gray-600',
   }
 
+  function openReport() {
+    setForm({
+      title: '', description: '', category: 'other', priority: 'medium',
+      community_id: communities[0]?.id || '', cost: '',
+    })
+    setError('')
+    setShowReport(true)
+  }
+
+  async function handleReport() {
+    setError('')
+    if (!form.title.trim() || !form.community_id) {
+      setError('A short title and a community are required.')
+      return
+    }
+    setSaving(true)
+    const community = communities.find((c) => c.id === form.community_id)
+    try {
+      await api.post('/maintenance/', {
+        title: form.title.trim(),
+        description: form.description.trim() || null,
+        category: form.category,
+        priority: form.priority,
+        reported_date: new Date().toISOString(),
+        cost: parseFloat(form.cost) || 0,
+        currency: community?.currency || 'USD',
+        reported_by: user?.full_name || null,
+        community_id: form.community_id,
+      })
+      setShowReport(false)
+      load()
+    } catch {
+      setError('Could not submit the issue. Please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
@@ -47,7 +115,10 @@ export default function MaintenancePage() {
           <h1 className="text-2xl font-bold text-gray-900">Maintenance</h1>
           <p className="text-gray-500 mt-1">Track and manage maintenance issues</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
+        <button
+          onClick={openReport}
+          className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+        >
           <Plus className="h-4 w-4" />
           Report Issue
         </button>
@@ -103,6 +174,66 @@ export default function MaintenancePage() {
           )}
         </div>
       )}
+
+      {showReport && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-gray-900">Report Issue</h2>
+              <button onClick={() => setShowReport(false)} className="p-1 rounded hover:bg-gray-100">
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Issue title</label>
+                <input className={inputCls} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Broken pipe near tank" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Community</label>
+                <select className={inputCls} value={form.community_id} onChange={(e) => setForm({ ...form, community_id: e.target.value })}>
+                  <option value="">— Select community —</option>
+                  {communities.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                  <select className={inputCls} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+                    {CATEGORIES.map((c) => (
+                      <option key={c} value={c}>{c.replace(/_/g, ' ')}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                  <select className={inputCls} value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}>
+                    {PRIORITIES.map((p) => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
+                <textarea className={inputCls} rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What happened?" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Estimated cost (optional)</label>
+                <input type="number" step="0.01" className={inputCls} value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} placeholder="0.00" />
+              </div>
+              {error && <p className="text-sm text-red-600">{error}</p>}
+              <button onClick={handleReport} disabled={saving} className="w-full py-2.5 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors disabled:opacity-50">
+                {saving ? 'Submitting…' : 'Submit Issue'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
+
+const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500'

@@ -1,13 +1,20 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_role
 from app.core.security import create_access_token, get_password_hash, verify_password
 from app.db.session import get_db
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserResponse
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+class AssignCommunityRequest(BaseModel):
+    community_id: uuid.UUID | None = None
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -36,6 +43,54 @@ def get_me(current_user: User = Depends(get_current_user)):
         role=current_user.role.value,
         partner_id=str(current_user.partner_id) if current_user.partner_id else None,
         community_id=str(current_user.community_id) if current_user.community_id else None,
+    )
+
+
+@router.get("/users", response_model=list[UserResponse])
+def list_users(
+    role: str | None = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.SUPER_ADMIN, UserRole.PARTNER_ADMIN)),
+):
+    """List users so an admin can assign operators to communities."""
+    query = db.query(User)
+    if role:
+        query = query.filter(User.role == role)
+    users = query.order_by(User.full_name).all()
+    return [
+        UserResponse(
+            id=str(u.id),
+            email=u.email,
+            full_name=u.full_name,
+            role=u.role.value,
+            partner_id=str(u.partner_id) if u.partner_id else None,
+            community_id=str(u.community_id) if u.community_id else None,
+        )
+        for u in users
+    ]
+
+
+@router.patch("/users/{user_id}/community", response_model=UserResponse)
+def assign_user_community(
+    user_id: uuid.UUID,
+    payload: AssignCommunityRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.SUPER_ADMIN, UserRole.PARTNER_ADMIN)),
+):
+    """Assign (or clear) the community a user works in."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    user.community_id = payload.community_id
+    db.commit()
+    db.refresh(user)
+    return UserResponse(
+        id=str(user.id),
+        email=user.email,
+        full_name=user.full_name,
+        role=user.role.value,
+        partner_id=str(user.partner_id) if user.partner_id else None,
+        community_id=str(user.community_id) if user.community_id else None,
     )
 
 
