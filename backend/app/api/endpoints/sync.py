@@ -7,14 +7,63 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_role
+from app.api.deps import require_role
 from app.db.session import get_db
 from app.models.billing import Invoice, InvoiceStatus, Payment, PaymentMethod
+from app.models.community import Community
 from app.models.household import Household
 from app.models.meter import Meter, MeterReading
 from app.models.user import User, UserRole
 
 router = APIRouter(prefix="/sync", tags=["sync"])
+
+
+def _find_or_create_household(db: Session, community_id: uuid.UUID, name_or_number: str) -> Household:
+    """Match an operator's free-text entry to a household, creating one if new.
+
+    Operators identify a household by head-of-household name OR account number.
+    New households are registered in the operator's own community with an
+    auto-generated account number.
+    """
+    term = name_or_number.strip()
+    existing = (
+        db.query(Household)
+        .filter(Household.community_id == community_id)
+        .filter(
+            (Household.account_number.ilike(term))
+            | (Household.head_of_household.ilike(term))
+        )
+        .first()
+    )
+    if existing:
+        return existing
+
+    count = db.query(Household).filter(Household.community_id == community_id).count()
+    community = db.query(Community).filter(Community.id == community_id).first()
+    prefix = (community.name[:3].upper().replace(" ", "") if community else "HH")
+    household = Household(
+        account_number=f"{prefix}-{count + 1:04d}",
+        head_of_household=term,
+        status="active",
+        has_meter=True,
+        community_id=community_id,
+    )
+    db.add(household)
+    db.flush()
+    return household
+
+
+def _get_or_create_meter(db: Session, household: Household) -> Meter:
+    meter = db.query(Meter).filter(Meter.household_id == household.id).first()
+    if meter:
+        return meter
+    meter = Meter(
+        serial_number=f"M-{uuid.uuid4().hex[:12].upper()}",
+        household_id=household.id,
+    )
+    db.add(meter)
+    db.flush()
+    return meter
 
 
 class SyncMeterReading(BaseModel):
@@ -99,9 +148,35 @@ def push_offline_data(
                 reading_results.append(SyncResultItem(
                     client_id=r.client_id, server_id=str(reading.id), success=True,
                 ))
+            elif r.household_name and current_user.community_id:
+                # Field flow: match/create the household by name, then record
+                # against its meter so consumption and payments stay linked.
+                household = _find_or_create_household(
+                    db, current_user.community_id, r.household_name
+                )
+                meter = _get_or_create_meter(db, household)
+                previous_value = meter.last_reading_value
+                consumption = max(0, r.reading_value - previous_value)
+
+                reading = MeterReading(
+                    reading_value=r.reading_value,
+                    previous_value=previous_value,
+                    consumption_m3=round(consumption, 1),
+                    reading_date=r.reading_date,
+                    notes=r.notes,
+                    recorded_by=r.recorded_by or current_user.full_name,
+                    meter_id=meter.id,
+                )
+                db.add(reading)
+                meter.last_reading_value = r.reading_value
+                meter.last_reading_date = r.reading_date
+                db.flush()
+
+                reading_results.append(SyncResultItem(
+                    client_id=r.client_id, server_id=str(reading.id), success=True,
+                ))
             else:
-                # Simplified flow: just household name + reading value
-                # Store as a reading with notes containing household name
+                # Fallback when no community is assigned: keep the name in notes.
                 reading = MeterReading(
                     reading_value=r.reading_value,
                     previous_value=0,
