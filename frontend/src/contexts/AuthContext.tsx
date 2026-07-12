@@ -21,13 +21,18 @@ interface AuthContextType extends AuthState {
   logout: () => void
   refreshUser: () => Promise<void>
   isAdmin: boolean
+  isCommunityManager: boolean
   isOperator: boolean
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
-const ADMIN_ROLES = ['super_admin', 'partner_admin', 'community_admin']
-const OPERATOR_ROLES = ['operator', 'treasurer', 'reader']
+// Organization-wide read-only oversight (Green Empowerment / partners).
+const ADMIN_ROLES = ['super_admin', 'partner_admin']
+// Community-level administration: manages a single community and can edit its data.
+const COMMUNITY_MANAGER_ROLES = ['community_admin', 'treasurer']
+// Field data collection only.
+const OPERATOR_ROLES = ['operator', 'reader']
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [auth, setAuth] = useState<AuthState>({
@@ -75,10 +80,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [auth.isAuthenticated, auth.user, fetchUser])
 
   const isAdmin = !!auth.user && ADMIN_ROLES.includes(auth.user.role)
+  const isCommunityManager = !!auth.user && COMMUNITY_MANAGER_ROLES.includes(auth.user.role)
   const isOperator = !!auth.user && OPERATOR_ROLES.includes(auth.user.role)
 
   return (
-    <AuthContext.Provider value={{ ...auth, login, logout, refreshUser: fetchUser, isAdmin, isOperator }}>
+    <AuthContext.Provider value={{ ...auth, login, logout, refreshUser: fetchUser, isAdmin, isCommunityManager, isOperator }}>
       {children}
     </AuthContext.Provider>
   )
