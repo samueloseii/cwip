@@ -32,7 +32,7 @@ def list_communities(
     if current_user.role == UserRole.PARTNER_ADMIN and current_user.partner_id:
         query = query.filter(Community.partner_id == current_user.partner_id)
     elif (
-        current_user.role in (UserRole.COMMUNITY_ADMIN, UserRole.TREASURER)
+        current_user.role in (UserRole.COMMUNITY_ADMIN, UserRole.TREASURER, UserRole.OPERATOR)
         and current_user.community_id
     ):
         query = query.filter(Community.id == current_user.community_id)
