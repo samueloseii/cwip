@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
-import { Gauge, DollarSign, Wrench, Wifi, WifiOff, ChevronRight } from 'lucide-react'
+import { Gauge, Wrench, Wifi, WifiOff, ChevronRight } from 'lucide-react'
 import api from '../../services/api'
 
 interface CommunityInfo {
@@ -22,7 +22,7 @@ interface HouseholdInfo {
 }
 
 interface Props {
-  onNavigate: (page: 'readings' | 'payments' | 'maintenance') => void
+  onNavigate: (page: 'readings' | 'maintenance') => void
 }
 
 export default function FieldDashboard({ onNavigate }: Props) {
@@ -65,7 +65,6 @@ export default function FieldDashboard({ onNavigate }: Props) {
     )
   }
 
-  const totalOutstanding = households.reduce((s, h) => s + h.outstanding_balance, 0)
   const activeCount = households.filter((h) => h.status === 'active').length
 
   return (
@@ -93,8 +92,8 @@ export default function FieldDashboard({ onNavigate }: Props) {
           <p className="text-2xl font-bold">{households.length}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <p className="text-xs text-gray-500">Outstanding</p>
-          <p className="text-2xl font-bold text-amber-600">{community?.currency} {totalOutstanding.toFixed(2)}</p>
+          <p className="text-xs text-gray-500">To read this month</p>
+          <p className="text-2xl font-bold text-primary-600">{activeCount}</p>
         </div>
       </div>
 
@@ -108,22 +107,8 @@ export default function FieldDashboard({ onNavigate }: Props) {
             <Gauge className="h-6 w-6 text-blue-600" />
           </div>
           <div className="flex-1">
-            <p className="font-semibold text-gray-900">Record Meter Readings</p>
-            <p className="text-sm text-gray-500">Go house-to-house, enter readings</p>
-          </div>
-          <ChevronRight className="h-5 w-5 text-gray-400" />
-        </button>
-
-        <button
-          onClick={() => onNavigate('payments')}
-          className="w-full flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-100 hover:border-primary-200 hover:bg-primary-50 transition-colors text-left"
-        >
-          <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
-            <DollarSign className="h-6 w-6 text-green-600" />
-          </div>
-          <div className="flex-1">
-            <p className="font-semibold text-gray-900">Log Payments</p>
-            <p className="text-sm text-gray-500">Record cash payments from households</p>
+            <p className="font-semibold text-gray-900">Record meter readings</p>
+            <p className="text-sm text-gray-500">Go house-to-house, enter the dial value</p>
           </div>
           <ChevronRight className="h-5 w-5 text-gray-400" />
         </button>
@@ -136,8 +121,8 @@ export default function FieldDashboard({ onNavigate }: Props) {
             <Wrench className="h-6 w-6 text-orange-600" />
           </div>
           <div className="flex-1">
-            <p className="font-semibold text-gray-900">Report Issue</p>
-            <p className="text-sm text-gray-500">Log maintenance problems</p>
+            <p className="font-semibold text-gray-900">Report an issue</p>
+            <p className="text-sm text-gray-500">Leaks, broken meters, pump problems</p>
           </div>
           <ChevronRight className="h-5 w-5 text-gray-400" />
         </button>
@@ -146,7 +131,7 @@ export default function FieldDashboard({ onNavigate }: Props) {
       {/* Welcome info */}
       <div className="mt-6 bg-gray-50 rounded-xl p-4 text-sm text-gray-600">
         <p className="font-medium text-gray-700 mb-1">Welcome, {user?.full_name}</p>
-        <p>Use this tool to record meter readings and payments. Data is saved locally and syncs automatically when you have internet.</p>
+        <p>Record meter readings and report issues. Data is saved on the phone and syncs automatically when you have internet. Billing and payments are handled by the treasurer.</p>
       </div>
     </div>
   )

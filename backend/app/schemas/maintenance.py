@@ -11,15 +11,15 @@ from app.models.maintenance import (
 
 
 class MaintenanceCreate(BaseModel):
+    """An issue reported from the field. Costs are tracked as expenses, not here."""
+
     title: str
     description: str | None = None
     category: MaintenanceCategory = MaintenanceCategory.OTHER
     priority: MaintenancePriority = MaintenancePriority.MEDIUM
     reported_date: datetime
-    cost: float = 0.0
-    currency: str = "USD"
     reported_by: str | None = None
-    photo_url: str | None = None
+    reported_via_whatsapp: bool = False
     notes: str | None = None
     community_id: uuid.UUID
 
@@ -31,7 +31,6 @@ class MaintenanceUpdate(BaseModel):
     priority: MaintenancePriority | None = None
     status: MaintenanceStatus | None = None
     resolved_date: datetime | None = None
-    cost: float | None = None
     resolved_by: str | None = None
     notes: str | None = None
 
@@ -45,15 +44,14 @@ class MaintenanceResponse(BaseModel):
     status: MaintenanceStatus
     reported_date: datetime
     resolved_date: datetime | None
-    cost: float
-    currency: str
     reported_by: str | None
+    reported_via_whatsapp: bool
     resolved_by: str | None
-    photo_url: str | None
     notes: str | None
     community_id: uuid.UUID
     created_at: datetime
     updated_at: datetime
+    community_name: str | None = None
 
     class Config:
         from_attributes = True

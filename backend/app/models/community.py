@@ -65,3 +65,4 @@ class Community(Base):
     maintenance_records: Mapped[list["MaintenanceRecord"]] = relationship(  # noqa: F821
         back_populates="community"
     )
+    expenses: Mapped[list["Expense"]] = relationship(back_populates="community")  # noqa: F821

@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -61,6 +61,7 @@ class MaintenanceRecord(Base):
     reported_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
     resolved_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
     photo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    reported_via_whatsapp: Mapped[bool] = mapped_column(Boolean, default=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     community_id: Mapped[uuid.UUID] = mapped_column(
