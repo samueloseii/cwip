@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "CWIP - Community Water Intelligence Platform"
+    PROJECT_NAME: str = "Flow — Community Water Management"
     VERSION: str = "0.1.0"
     API_V1_STR: str = "/api/v1"
 
