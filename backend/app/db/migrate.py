@@ -19,8 +19,16 @@ STATEMENTS = (
 )
 
 
+SQLITE_STATEMENTS = (
+    "ALTER TABLE meters ADD COLUMN avg_consumption_m3 FLOAT DEFAULT 0",
+    "ALTER TABLE meter_readings ADD COLUMN flag_reason VARCHAR(255)",
+    "ALTER TABLE maintenance_records ADD COLUMN reported_via_whatsapp BOOLEAN DEFAULT 0",
+)
+
+
 def run_migrations(engine: Engine) -> None:
-    for statement in STATEMENTS:
+    statements = SQLITE_STATEMENTS if engine.dialect.name == "sqlite" else STATEMENTS
+    for statement in statements:
         try:
             with engine.begin() as conn:
                 conn.execute(text(statement))
