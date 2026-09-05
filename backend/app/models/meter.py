@@ -35,6 +35,7 @@ class Meter(Base):
     last_reading_date: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    avg_consumption_m3: Mapped[float] = mapped_column(Float, default=0.0)
 
     household_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("households.id")
@@ -64,6 +65,7 @@ class MeterReading(Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_estimated: Mapped[bool] = mapped_column(default=False)
     recorded_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    flag_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     meter_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("meters.id")

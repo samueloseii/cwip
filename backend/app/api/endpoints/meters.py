@@ -3,11 +3,19 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_role
+from app.api.deps import ADMIN_ROLES, READING_ROLES, get_current_user, require_role
 from app.db.session import get_db
-from app.models.meter import Meter, MeterReading
-from app.models.user import User, UserRole
-from app.schemas.meter import MeterCreate, MeterReadingCreate, MeterReadingResponse, MeterResponse
+from app.models.household import Household, HouseholdStatus
+from app.models.meter import Meter, MeterReading, MeterStatus
+from app.models.user import User
+from app.schemas.meter import (
+    MeterCreate,
+    MeterReadingCreate,
+    MeterReadingResponse,
+    MeterResponse,
+    ReadingContext,
+)
+from app.services.readings import record_reading
 
 router = APIRouter(prefix="/meters", tags=["meters"])
 
@@ -26,16 +34,59 @@ def list_meters(
     return query.offset(skip).limit(limit).all()
 
 
+@router.get("/reading-context", response_model=list[ReadingContext])
+def reading_context(
+    community_id: uuid.UUID | None = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Everything the field app needs to read meters, cacheable for offline use."""
+    query = (
+        db.query(Household, Meter)
+        .join(Meter, Meter.household_id == Household.id)
+        .filter(Household.status == HouseholdStatus.ACTIVE)
+        .filter(Meter.status == MeterStatus.ACTIVE)
+    )
+    if community_id:
+        query = query.filter(Household.community_id == community_id)
+    elif current_user.community_id:
+        query = query.filter(Household.community_id == current_user.community_id)
+
+    rows = query.order_by(Household.account_number).all()
+    return [
+        ReadingContext(
+            household_id=household.id,
+            account_number=household.account_number,
+            head_of_household=household.head_of_household,
+            address=household.address,
+            community_id=household.community_id,
+            meter_id=meter.id,
+            serial_number=meter.serial_number,
+            last_reading_value=meter.last_reading_value,
+            last_reading_date=meter.last_reading_date,
+            avg_consumption_m3=meter.avg_consumption_m3,
+        )
+        for household, meter in rows
+    ]
+
+
 @router.post("/", response_model=MeterResponse, status_code=status.HTTP_201_CREATED)
 def create_meter(
     payload: MeterCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(
-        require_role(UserRole.SUPER_ADMIN, UserRole.PARTNER_ADMIN, UserRole.COMMUNITY_ADMIN, UserRole.OPERATOR)
-    ),
+    current_user: User = Depends(require_role(*ADMIN_ROLES)),
 ):
+    household = db.query(Household).filter(Household.id == payload.household_id).first()
+    if not household:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Household not found")
+    if household.meter:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This household already has a meter",
+        )
     meter = Meter(**payload.model_dump())
     db.add(meter)
+    household.has_meter = True
     db.commit()
     db.refresh(meter)
     return meter
@@ -45,33 +96,22 @@ def create_meter(
 def create_reading(
     payload: MeterReadingCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(
-        require_role(UserRole.SUPER_ADMIN, UserRole.PARTNER_ADMIN, UserRole.COMMUNITY_ADMIN, UserRole.OPERATOR)
-    ),
+    current_user: User = Depends(require_role(*READING_ROLES)),
 ):
     meter = db.query(Meter).filter(Meter.id == payload.meter_id).first()
     if not meter:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meter not found")
 
-    previous_value = meter.last_reading_value
-    consumption = max(0, payload.reading_value - previous_value)
-
-    reading = MeterReading(
+    reading = record_reading(
+        db,
+        meter,
         reading_value=payload.reading_value,
-        previous_value=previous_value,
-        consumption_m3=consumption,
         reading_date=payload.reading_date,
-        photo_url=payload.photo_url,
         notes=payload.notes,
         is_estimated=payload.is_estimated,
-        recorded_by=payload.recorded_by,
-        meter_id=payload.meter_id,
+        recorded_by=payload.recorded_by or current_user.full_name,
+        photo_url=payload.photo_url,
     )
-    db.add(reading)
-
-    meter.last_reading_value = payload.reading_value
-    meter.last_reading_date = payload.reading_date
-
     db.commit()
     db.refresh(reading)
     return reading

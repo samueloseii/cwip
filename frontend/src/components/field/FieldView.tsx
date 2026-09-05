@@ -4,9 +4,9 @@ import { useAuth } from '../../contexts/AuthContext'
 import { startAutoSync } from '../../services/syncService'
 import FieldDashboard from './FieldDashboard'
 import MeterReadingField from './MeterReadingField'
-import PaymentField from './PaymentField'
+import MaintenanceField from './MaintenanceField'
 
-type Page = 'home' | 'readings' | 'payments' | 'maintenance'
+type Page = 'home' | 'readings' | 'maintenance'
 
 export default function FieldView() {
   const { logout, user } = useAuth()
@@ -42,17 +42,8 @@ export default function FieldView() {
         {page === 'readings' && (
           <MeterReadingField onBack={() => setPage('home')} />
         )}
-        {page === 'payments' && (
-          <PaymentField onBack={() => setPage('home')} />
-        )}
         {page === 'maintenance' && (
-          <div className="max-w-lg mx-auto">
-            <button onClick={() => setPage('home')} className="text-primary-600 text-sm mb-4">&larr; Back</button>
-            <div className="bg-white rounded-xl border border-gray-100 p-6 text-center">
-              <p className="text-gray-500">Maintenance reporting coming soon</p>
-              <p className="text-sm text-gray-400 mt-1">Use the admin dashboard to report issues for now</p>
-            </div>
-          </div>
+          <MaintenanceField onBack={() => setPage('home')} />
         )}
       </div>
     </div>

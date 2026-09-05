@@ -37,9 +37,26 @@ class InvoiceResponse(BaseModel):
     notes: str | None
     household_id: uuid.UUID
     created_at: datetime
+    household_name: str | None = None
+    account_number: str | None = None
+    community_id: uuid.UUID | None = None
 
     class Config:
         from_attributes = True
+
+
+class InvoiceGenerateRequest(BaseModel):
+    community_id: uuid.UUID
+    billing_period_start: datetime
+    billing_period_end: datetime
+    due_date: datetime
+
+
+class InvoiceGenerateResult(BaseModel):
+    created: int
+    skipped_existing: int
+    skipped_no_reading: int
+    invoices: list[InvoiceResponse]
 
 
 class PaymentCreate(BaseModel):
@@ -66,6 +83,9 @@ class PaymentResponse(BaseModel):
     household_id: uuid.UUID
     invoice_id: uuid.UUID | None
     created_at: datetime
+    household_name: str | None = None
+    account_number: str | None = None
+    invoice_number: str | None = None
 
     class Config:
         from_attributes = True

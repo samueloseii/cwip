@@ -90,17 +90,20 @@ export default function DashboardPage() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
           <div className="space-y-3">
-            <a href="/meters" className="block px-4 py-3 bg-primary-50 rounded-lg text-primary-700 hover:bg-primary-100 transition-colors">
-              Record Meter Readings
+            <a href="/households" className="block px-4 py-3 bg-primary-50 rounded-lg text-primary-700 hover:bg-primary-100 transition-colors">
+              Register a household
             </a>
             <a href="/billing" className="block px-4 py-3 bg-primary-50 rounded-lg text-primary-700 hover:bg-primary-100 transition-colors">
-              Generate Invoices
+              Generate bills
+            </a>
+            <a href="/expenses" className="block px-4 py-3 bg-primary-50 rounded-lg text-primary-700 hover:bg-primary-100 transition-colors">
+              Record an expense
             </a>
             <a href="/maintenance" className="block px-4 py-3 bg-primary-50 rounded-lg text-primary-700 hover:bg-primary-100 transition-colors">
-              Report Maintenance Issue
+              Review maintenance reports
             </a>
             <a href="/analytics" className="block px-4 py-3 bg-primary-50 rounded-lg text-primary-700 hover:bg-primary-100 transition-colors">
-              View AI Analytics
+              View analytics
             </a>
           </div>
         </div>
