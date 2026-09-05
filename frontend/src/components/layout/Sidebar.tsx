@@ -37,7 +37,7 @@ export default function Sidebar() {
       <div className="p-6 flex items-center gap-3 border-b border-primary-800">
         <Droplets className="h-8 w-8 text-primary-300" />
         <div>
-          <h1 className="text-lg font-bold">CWIP</h1>
+          <h1 className="text-lg font-bold">Flow</h1>
           <p className="text-xs text-primary-300">Water Intelligence</p>
         </div>
       </div>

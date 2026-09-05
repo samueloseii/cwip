@@ -58,8 +58,8 @@ export default function LoginPage() {
             <Droplets className="h-6 w-6" />
           </div>
           <div>
-            <p className="font-bold text-lg leading-tight">CWIP</p>
-            <p className="text-primary-200 text-sm">Community Water Intelligence Platform</p>
+            <p className="font-bold text-lg leading-tight">Flow</p>
+            <p className="text-primary-200 text-sm">Community Water Management</p>
           </div>
         </div>
 
@@ -94,8 +94,8 @@ export default function LoginPage() {
               <Droplets className="h-6 w-6 text-primary-600" />
             </div>
             <div>
-              <p className="font-bold text-lg text-gray-900 leading-tight">CWIP</p>
-              <p className="text-gray-500 text-sm">Community Water Intelligence Platform</p>
+              <p className="font-bold text-lg text-gray-900 leading-tight">Flow</p>
+              <p className="text-gray-500 text-sm">Community Water Management</p>
             </div>
           </div>
 
