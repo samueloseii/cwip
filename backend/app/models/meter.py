@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, Enum, Float, ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from app.db.types import GUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -20,7 +20,7 @@ class Meter(Base):
     __tablename__ = "meters"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        GUID(), primary_key=True, default=uuid.uuid4
     )
     serial_number: Mapped[str] = mapped_column(String(100), unique=True, index=True)
     brand: Mapped[str | None] = mapped_column(String(100), nullable=True)
@@ -38,7 +38,7 @@ class Meter(Base):
     avg_consumption_m3: Mapped[float] = mapped_column(Float, default=0.0)
 
     household_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("households.id")
+        GUID(), ForeignKey("households.id")
     )
 
     created_at: Mapped[datetime] = mapped_column(
@@ -55,7 +55,7 @@ class MeterReading(Base):
     __tablename__ = "meter_readings"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        GUID(), primary_key=True, default=uuid.uuid4
     )
     reading_value: Mapped[float] = mapped_column(Float)
     previous_value: Mapped[float] = mapped_column(Float, default=0.0)
@@ -68,7 +68,7 @@ class MeterReading(Base):
     flag_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     meter_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("meters.id")
+        GUID(), ForeignKey("meters.id")
     )
 
     created_at: Mapped[datetime] = mapped_column(

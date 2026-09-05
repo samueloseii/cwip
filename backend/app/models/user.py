@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from app.db.types import GUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -22,7 +22,7 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        GUID(), primary_key=True, default=uuid.uuid4
     )
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     hashed_password: Mapped[str] = mapped_column(String(255))
@@ -33,10 +33,10 @@ class User(Base):
     preferred_language: Mapped[str] = mapped_column(String(10), default="es")
 
     partner_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("partners.id"), nullable=True
+        GUID(), ForeignKey("partners.id"), nullable=True
     )
     community_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("communities.id"), nullable=True
+        GUID(), ForeignKey("communities.id"), nullable=True
     )
 
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)

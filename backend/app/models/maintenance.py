@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from app.db.types import GUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -39,7 +39,7 @@ class MaintenanceRecord(Base):
     __tablename__ = "maintenance_records"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        GUID(), primary_key=True, default=uuid.uuid4
     )
     title: Mapped[str] = mapped_column(String(255))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -65,7 +65,7 @@ class MaintenanceRecord(Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     community_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("communities.id")
+        GUID(), ForeignKey("communities.id")
     )
 
     created_at: Mapped[datetime] = mapped_column(

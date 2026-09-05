@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from app.db.types import GUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -28,7 +28,7 @@ class Invoice(Base):
     __tablename__ = "invoices"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        GUID(), primary_key=True, default=uuid.uuid4
     )
     invoice_number: Mapped[str] = mapped_column(String(50), unique=True, index=True)
     billing_period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
@@ -48,7 +48,7 @@ class Invoice(Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     household_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("households.id")
+        GUID(), ForeignKey("households.id")
     )
 
     created_at: Mapped[datetime] = mapped_column(
@@ -63,7 +63,7 @@ class Payment(Base):
     __tablename__ = "payments"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        GUID(), primary_key=True, default=uuid.uuid4
     )
     amount: Mapped[float] = mapped_column(Float)
     currency: Mapped[str] = mapped_column(String(10), default="USD")
@@ -76,10 +76,10 @@ class Payment(Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     household_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("households.id")
+        GUID(), ForeignKey("households.id")
     )
     invoice_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("invoices.id"), nullable=True
+        GUID(), ForeignKey("invoices.id"), nullable=True
     )
 
     created_at: Mapped[datetime] = mapped_column(
