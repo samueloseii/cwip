@@ -5,6 +5,7 @@ from app.models.meter import Meter, MeterReading
 from app.models.billing import Invoice, Payment
 from app.models.maintenance import MaintenanceRecord
 from app.models.partner import Partner
+from app.models.expense import Expense, ExpenseCategory
 
 __all__ = [
     "User",
@@ -16,4 +17,6 @@ __all__ = [
     "Payment",
     "MaintenanceRecord",
     "Partner",
+    "Expense",
+    "ExpenseCategory",
 ]

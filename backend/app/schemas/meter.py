@@ -33,6 +33,7 @@ class MeterResponse(BaseModel):
     install_date: datetime | None
     last_reading_value: float
     last_reading_date: datetime | None
+    avg_consumption_m3: float
     household_id: uuid.UUID
     created_at: datetime
 
@@ -50,8 +51,24 @@ class MeterReadingResponse(BaseModel):
     notes: str | None
     is_estimated: bool
     recorded_by: str | None
+    flag_reason: str | None
     meter_id: uuid.UUID
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class ReadingContext(BaseModel):
+    """A meter an operator may read, plus the context needed to sanity-check it."""
+
+    household_id: uuid.UUID
+    account_number: str
+    head_of_household: str
+    address: str | None
+    community_id: uuid.UUID
+    meter_id: uuid.UUID
+    serial_number: str
+    last_reading_value: float
+    last_reading_date: datetime | None
+    avg_consumption_m3: float

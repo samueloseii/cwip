@@ -1,4 +1,4 @@
-"""Seed database with demo data for the CWIP pilot."""
+"""Seed database with demo data for the Flow pilot."""
 
 import random
 from datetime import datetime, timedelta, timezone
@@ -10,6 +10,7 @@ from app.db.session import SessionLocal, engine
 from app.db.base import Base
 from app.models.billing import Invoice, InvoiceStatus, Payment, PaymentMethod
 from app.models.community import Community, CommunitySize, WaterSystemType
+from app.models.expense import Expense, ExpenseCategory
 from app.models.household import Household, HouseholdStatus
 from app.models.maintenance import (
     MaintenanceCategory,
@@ -78,7 +79,7 @@ def _seed_data(db: Session):
     # Admin user
     admin = User(
         email="admin@cwip.org", hashed_password=get_password_hash("admin123"),
-        full_name="CWIP Administrator", role=UserRole.SUPER_ADMIN,
+        full_name="Flow Administrator", role=UserRole.SUPER_ADMIN,
     )
     db.add(admin)
 
@@ -93,9 +94,17 @@ def _seed_data(db: Session):
         db.add(u)
     db.flush()
 
-    # Community operator users (technician / treasurer per community)
+    # Community-level users: the administrator runs accounts and billing,
+    # the operator reads meters, the treasurer handles money.
     for ci, community in enumerate(communities[:6]):
-        slug = community.name.lower().replace(" ", "")[:10]
+        db.add(User(
+            email=f"sysadmin{ci+1}@cwip.org",
+            hashed_password=get_password_hash("sysadmin123"),
+            full_name=f"System Administrator - {community.name}",
+            role=UserRole.COMMUNITY_ADMIN,
+            partner_id=community.partner_id,
+            community_id=community.id,
+        ))
         op = User(
             email=f"operator{ci+1}@cwip.org",
             hashed_password=get_password_hash("operator123"),
@@ -155,30 +164,47 @@ def _seed_data(db: Session):
             db.add(meter)
             db.flush()
 
-            # Meter readings (last 4 months)
+            # Meter readings — 12 months of history so trends are meaningful
             cumulative = random.uniform(50, 500)
-            for month_offset in range(4, 0, -1):
-                consumption = random.uniform(5, 30)
+            baseline = random.uniform(8, 22)
+            monthly_consumption: dict[int, float] = {}
+            recent: list[float] = []
+            for month_offset in range(12, 0, -1):
+                consumption = max(0.0, random.gauss(baseline, baseline * 0.18))
+                flag_reason = None
+                # A few households show a leak-like spike the admin should notice.
+                if month_offset <= 2 and hi % 7 == 0:
+                    consumption = baseline * random.uniform(1.8, 3.0)
+                    average = sum(recent[-6:]) / len(recent[-6:]) if recent else 0.0
+                    pct = round((consumption / average - 1) * 100) if average else 0
+                    flag_reason = (
+                        f"Consumption {consumption:.1f} m³ is {pct}% above this "
+                        f"household's average of {average:.1f} m³ — possible leak or misread."
+                    )
                 prev = cumulative
                 cumulative += consumption
+                monthly_consumption[month_offset] = round(consumption, 1)
+                recent.append(consumption)
                 reading = MeterReading(
                     reading_value=round(cumulative, 1),
                     previous_value=round(prev, 1),
                     consumption_m3=round(consumption, 1),
                     reading_date=now - timedelta(days=month_offset * 30),
                     meter_id=meter.id,
-                    recorded_by="Operator",
+                    recorded_by=f"Operator - {community.name}",
+                    flag_reason=flag_reason,
                 )
                 db.add(reading)
 
             meter.last_reading_value = round(cumulative, 1)
             meter.last_reading_date = now - timedelta(days=30)
+            meter.avg_consumption_m3 = round(sum(recent[-6:]) / len(recent[-6:]), 1)
 
-            # Invoices for last 3 months
-            for month_offset in range(3, 0, -1):
+            # Invoices for the last 6 months, priced off the actual readings
+            for month_offset in range(6, 0, -1):
                 period_start = now - timedelta(days=month_offset * 30 + 30)
                 period_end = now - timedelta(days=month_offset * 30)
-                consumption = random.uniform(8, 25)
+                consumption = monthly_consumption.get(month_offset, baseline)
                 variable = consumption * community.tariff_per_m3
                 total = community.tariff_fixed + variable
 
@@ -251,16 +277,43 @@ def _seed_data(db: Session):
                 priority=random.choice(list(MaintenancePriority)),
                 status=random.choice([MaintenanceStatus.REPORTED, MaintenanceStatus.REPORTED, MaintenanceStatus.IN_PROGRESS, MaintenanceStatus.COMPLETED]),
                 reported_date=now - timedelta(days=random.randint(1, 90)),
-                cost=round(random.uniform(0, 200), 2) if random.random() > 0.5 else 0,
-                currency=community.currency,
+                reported_by=f"Operator - {community.name}",
+                reported_via_whatsapp=random.random() > 0.4,
                 community_id=community.id,
             )
             if record.status == MaintenanceStatus.COMPLETED:
                 record.resolved_date = record.reported_date + timedelta(days=random.randint(1, 14))
+                record.resolved_by = f"System Administrator - {community.name}"
             db.add(record)
 
+    # Expenses — money spent, tracked separately from maintenance reports
+    expense_templates = [
+        ("Chlorine and water treatment supplies", ExpenseCategory.MAINTENANCE),
+        ("PVC pipe and fittings", ExpenseCategory.MAINTENANCE),
+        ("Pump repair labour", ExpenseCategory.MAINTENANCE),
+        ("Replacement water meter", ExpenseCategory.MAINTENANCE),
+        ("Electricity for pumping station", ExpenseCategory.ADMINISTRATIVE),
+        ("Operator monthly stipend", ExpenseCategory.ADMINISTRATIVE),
+        ("Printing of bills and receipts", ExpenseCategory.ADMINISTRATIVE),
+        ("Transport to municipal office", ExpenseCategory.OTHER),
+    ]
+    for community in communities[:6]:
+        scale = 1.0 if community.currency == "USD" else 25.0
+        for month_offset in range(9):
+            description, category = random.choice(expense_templates)
+            db.add(Expense(
+                expense_date=now - timedelta(days=month_offset * 30 + random.randint(0, 20)),
+                amount=round(random.uniform(10, 220) * scale, 2),
+                currency=community.currency,
+                description=description,
+                category=category,
+                receipt_number=f"R-{community.name[:3].upper()}-{random.randint(1000, 9999)}",
+                recorded_by=f"Treasurer - {community.name}",
+                community_id=community.id,
+            ))
+
     db.commit()
-    print(f"Seeded: {len(partners)} partners, {len(communities)} communities, demo households/billing/maintenance")
+    print(f"Seeded: {len(partners)} partners, {len(communities)} communities, demo households/billing/maintenance/expenses")
 
 
 if __name__ == "__main__":

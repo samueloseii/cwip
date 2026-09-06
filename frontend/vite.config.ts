@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'logo.svg'],
       manifest: {
-        name: 'CWIP - Community Water Intelligence Platform',
-        short_name: 'CWIP',
+        name: 'Flow — Community Water Management',
+        short_name: 'Flow',
         description: 'Digital management platform for rural community water systems',
         theme_color: '#0ea5e9',
         background_color: '#f8fafc',

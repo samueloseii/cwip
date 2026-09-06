@@ -1,39 +1,57 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Check, AlertTriangle, Wifi, WifiOff } from 'lucide-react'
+import { ArrowLeft, AlertTriangle, Check, Wifi, WifiOff } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import api from '../../services/api'
 import { saveOfflineReading, getPendingReadings } from '../../services/offlineStore'
 
-interface Household {
-  id: string
+interface ReadingContext {
+  household_id: string
   account_number: string
   head_of_household: string
-  status: string
-}
-
-interface Meter {
-  id: string
+  address: string | null
+  community_id: string
+  meter_id: string
   serial_number: string
   last_reading_value: number
   last_reading_date: string | null
-  household_id: string
+  avg_consumption_m3: number
 }
 
 interface Props {
   onBack: () => void
 }
 
+// Mirrors the backend anomaly rules so the operator sees the warning before saving.
+const HIGH_CONSUMPTION_RATIO = 1.25
+
+function warningFor(target: ReadingContext, value: number): string {
+  const previous = target.last_reading_value
+  if (value < previous) {
+    return `This reading (${value}) is lower than the last one (${previous.toFixed(
+      1,
+    )}). Meters only count up — check for a transposed digit.`
+  }
+  const consumption = value - previous
+  if (consumption === 0) {
+    return 'No consumption since the last reading. Confirm the meter is working and the house is occupied.'
+  }
+  const average = target.avg_consumption_m3
+  if (average > 0 && consumption > average * HIGH_CONSUMPTION_RATIO) {
+    return `Consumption of ${consumption.toFixed(1)} m³ is well above this household's usual ${average.toFixed(
+      1,
+    )} m³. Re-read the dial or note a possible leak.`
+  }
+  return ''
+}
+
 export default function MeterReadingField({ onBack }: Props) {
   const { user } = useAuth()
-  const [households, setHouseholds] = useState<Household[]>([])
-  const [meters, setMeters] = useState<Meter[]>([])
-  const [selectedHH, setSelectedHH] = useState<string>('')
-  const [currentMeter, setCurrentMeter] = useState<Meter | null>(null)
+  const [targets, setTargets] = useState<ReadingContext[]>([])
+  const [selected, setSelected] = useState('')
   const [readingValue, setReadingValue] = useState('')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState<string[]>([])
-  const [warning, setWarning] = useState('')
   const [online, setOnline] = useState(navigator.onLine)
   const [pendingCount, setPendingCount] = useState(0)
 
@@ -53,100 +71,76 @@ export default function MeterReadingField({ onBack }: Props) {
   }, [saved])
 
   useEffect(() => {
-    if (!user?.community_id) return
     api
-      .get(`/households/?community_id=${user.community_id}`)
-      .then((res) => setHouseholds(res.data.filter((h: Household) => h.status === 'active')))
-      .catch(() => {})
-    api
-      .get('/meters/')
-      .then((res) => setMeters(res.data))
-      .catch(() => {})
+      .get('/meters/reading-context', {
+        params: user?.community_id ? { community_id: user.community_id } : {},
+      })
+      .then((res) => setTargets(res.data))
+      .catch(() => setTargets([]))
   }, [user?.community_id])
 
-  useEffect(() => {
-    if (!selectedHH) {
-      setCurrentMeter(null)
-      return
-    }
-    const meter = meters.find((m) => m.household_id === selectedHH)
-    setCurrentMeter(meter || null)
-    setReadingValue('')
-    setNotes('')
-    setWarning('')
-  }, [selectedHH, meters])
-
-  useEffect(() => {
-    if (!currentMeter || !readingValue) {
-      setWarning('')
-      return
-    }
-    const val = parseFloat(readingValue)
-    if (isNaN(val)) return
-    const prev = currentMeter.last_reading_value
-    if (val < prev) {
-      setWarning(`Reading (${val}) is lower than previous (${prev.toFixed(1)}). Check the meter.`)
-    } else if (val - prev > 50) {
-      setWarning(`Very high consumption (${(val - prev).toFixed(1)} m³). Please verify.`)
-    } else {
-      setWarning('')
-    }
-  }, [readingValue, currentMeter])
+  const target = targets.find((t) => t.household_id === selected) || null
+  const value = parseFloat(readingValue)
+  const hasValue = readingValue !== '' && !Number.isNaN(value)
+  const warning = target && hasValue ? warningFor(target, value) : ''
+  const consumption = target && hasValue ? Math.max(0, value - target.last_reading_value) : 0
 
   async function handleSubmit() {
-    if (!currentMeter || !readingValue) return
+    if (!target || !hasValue) return
     setSaving(true)
-    const val = parseFloat(readingValue)
     const reading = {
       client_id: `r-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      meter_id: currentMeter.id,
-      reading_value: val,
+      meter_id: target.meter_id,
+      reading_value: value,
       reading_date: new Date().toISOString(),
       notes: notes || undefined,
       recorded_by: user?.full_name || 'Unknown',
     }
 
+    let synced = false
     if (online) {
       try {
         await api.post('/sync/push', { readings: [reading], payments: [] })
-        setSaved((prev) => [...prev, selectedHH])
-        setSelectedHH('')
-        setReadingValue('')
-        setNotes('')
+        synced = true
       } catch {
-        await saveOfflineReading(reading)
-        setSaved((prev) => [...prev, selectedHH])
-        setSelectedHH('')
-        setReadingValue('')
-        setNotes('')
+        synced = false
       }
-    } else {
-      await saveOfflineReading(reading)
-      setSaved((prev) => [...prev, selectedHH])
-      setSelectedHH('')
-      setReadingValue('')
-      setNotes('')
     }
+    if (!synced) {
+      await saveOfflineReading(reading)
+    }
+
+    setTargets((prev) =>
+      prev.map((t) =>
+        t.household_id === target.household_id && value >= t.last_reading_value
+          ? { ...t, last_reading_value: value, last_reading_date: reading.reading_date }
+          : t,
+      ),
+    )
+    setSaved((prev) => [...prev, target.household_id])
+    setSelected('')
+    setReadingValue('')
+    setNotes('')
     setSaving(false)
   }
 
-  const selectedHousehold = households.find((h) => h.id === selectedHH)
-
   return (
     <div className="max-w-lg mx-auto">
-      {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <button onClick={onBack} className="p-2 rounded-lg hover:bg-gray-100">
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Meter Readings</h1>
+          <h1 className="text-xl font-bold text-gray-900">Meter readings</h1>
           <p className="text-sm text-gray-500">{saved.length} recorded this session</p>
         </div>
       </div>
 
-      {/* Status bar */}
-      <div className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm mb-4 ${online ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
+      <div
+        className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm mb-4 ${
+          online ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'
+        }`}
+      >
         <div className="flex items-center gap-2">
           {online ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
           {online ? 'Online' : 'Offline — saving locally'}
@@ -158,40 +152,58 @@ export default function MeterReadingField({ onBack }: Props) {
         )}
       </div>
 
-      {/* Household selector */}
       <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">Select Household</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Household</label>
         <select
-          value={selectedHH}
-          onChange={(e) => setSelectedHH(e.target.value)}
+          value={selected}
+          onChange={(e) => {
+            setSelected(e.target.value)
+            setReadingValue('')
+            setNotes('')
+          }}
           className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
         >
           <option value="">— Choose household —</option>
-          {households.map((h) => (
-            <option key={h.id} value={h.id} disabled={saved.includes(h.id)}>
-              {h.account_number} — {h.head_of_household} {saved.includes(h.id) ? '✓' : ''}
+          {targets.map((t) => (
+            <option key={t.household_id} value={t.household_id}>
+              {t.account_number} — {t.head_of_household} {saved.includes(t.household_id) ? '✓' : ''}
             </option>
           ))}
         </select>
+        {targets.length === 0 && (
+          <p className="text-sm text-gray-500 mt-2">
+            No metered households assigned yet. Ask your administrator to register them.
+          </p>
+        )}
       </div>
 
-      {currentMeter && selectedHousehold && (
+      {target && (
         <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-          {/* Previous reading info */}
-          <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-100">
+          <div className="grid grid-cols-2 gap-3 mb-4 pb-3 border-b border-gray-100">
             <div>
-              <p className="text-sm text-gray-500">Previous Reading</p>
-              <p className="text-lg font-bold font-mono">{currentMeter.last_reading_value.toFixed(1)} m³</p>
+              <p className="text-sm text-gray-500">Previous reading</p>
+              <p className="text-lg font-bold font-mono">
+                {target.last_reading_value.toFixed(1)} m³
+              </p>
+              <p className="text-xs text-gray-400">
+                {target.last_reading_date
+                  ? new Date(target.last_reading_date).toLocaleDateString()
+                  : 'No reading yet'}
+              </p>
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-500">Meter</p>
-              <p className="text-sm font-medium">{currentMeter.serial_number}</p>
+              <p className="text-sm font-medium">{target.serial_number}</p>
+              <p className="text-xs text-gray-400">
+                usual {target.avg_consumption_m3.toFixed(1)} m³/month
+              </p>
             </div>
           </div>
 
-          {/* New reading input */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">New Reading (m³)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              New reading (m³) — the number on the dial
+            </label>
             <input
               type="number"
               inputMode="decimal"
@@ -199,27 +211,29 @@ export default function MeterReadingField({ onBack }: Props) {
               value={readingValue}
               onChange={(e) => setReadingValue(e.target.value)}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg text-xl font-mono focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              placeholder={`> ${currentMeter.last_reading_value.toFixed(1)}`}
+              placeholder={`> ${target.last_reading_value.toFixed(1)}`}
               autoFocus
             />
           </div>
 
-          {/* Consumption preview */}
-          {readingValue && !isNaN(parseFloat(readingValue)) && (
+          {hasValue && (
             <div className="bg-blue-50 rounded-lg px-3 py-2 mb-3 text-sm text-blue-700">
-              Consumption: <strong>{Math.max(0, parseFloat(readingValue) - currentMeter.last_reading_value).toFixed(1)} m³</strong>
+              Consumption this period: <strong>{consumption.toFixed(1)} m³</strong>
             </div>
           )}
 
-          {/* Warning */}
           {warning && (
-            <div className="flex items-start gap-2 bg-amber-50 rounded-lg px-3 py-2 mb-3 text-sm text-amber-700">
+            <div className="flex items-start gap-2 bg-amber-50 rounded-lg px-3 py-2 mb-3 text-sm text-amber-800">
               <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-              {warning}
+              <span>
+                {warning}
+                <span className="block text-xs text-amber-600 mt-1">
+                  You can still save it — the reading will be flagged for review.
+                </span>
+              </span>
             </div>
           )}
 
-          {/* Notes */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
             <input
@@ -227,14 +241,13 @@ export default function MeterReadingField({ onBack }: Props) {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm"
-              placeholder="e.g. Meter hard to read, estimated"
+              placeholder="e.g. Dial hard to read, estimated"
             />
           </div>
 
-          {/* Submit */}
           <button
             onClick={handleSubmit}
-            disabled={saving || !readingValue}
+            disabled={saving || !hasValue}
             className="w-full py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 text-base"
           >
             {saving ? (
@@ -242,24 +255,26 @@ export default function MeterReadingField({ onBack }: Props) {
             ) : (
               <>
                 <Check className="h-5 w-5" />
-                Save Reading
+                Save reading
               </>
             )}
           </button>
         </div>
       )}
 
-      {/* Already recorded list */}
       {saved.length > 0 && (
         <div className="mt-4">
           <h3 className="text-sm font-medium text-gray-700 mb-2">Recorded this session</h3>
           <div className="space-y-1">
-            {saved.map((hhId) => {
-              const hh = households.find((h) => h.id === hhId)
+            {saved.map((householdId, index) => {
+              const item = targets.find((t) => t.household_id === householdId)
               return (
-                <div key={hhId} className="flex items-center gap-2 text-sm text-green-700 bg-green-50 rounded-lg px-3 py-2">
+                <div
+                  key={`${householdId}-${index}`}
+                  className="flex items-center gap-2 text-sm text-green-700 bg-green-50 rounded-lg px-3 py-2"
+                >
                   <Check className="h-4 w-4" />
-                  {hh?.account_number} — {hh?.head_of_household}
+                  {item?.account_number} — {item?.head_of_household}
                 </div>
               )
             })}

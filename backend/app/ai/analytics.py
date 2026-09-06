@@ -1,4 +1,4 @@
-"""AI Analytics Module for CWIP.
+"""AI Analytics Module for Flow.
 
 Provides payment risk prediction, anomaly detection, maintenance prioritization,
 financial sustainability alerts, and automated reporting using LLM integration.

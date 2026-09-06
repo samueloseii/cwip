@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -9,9 +8,12 @@ from fastapi.staticfiles import StaticFiles
 from app.api.router import api_router
 from app.core.config import settings
 from app.db.base import Base
+from app.db.migrate import run_migrations
+from app.db.seed import seed
 from app.db.session import engine
 from app.models import (  # noqa: F401  — ensure all models are registered
     Community,
+    Expense,
     Household,
     Invoice,
     MaintenanceRecord,
@@ -44,6 +46,9 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 @app.on_event("startup")
 def on_startup():
     Base.metadata.create_all(bind=engine)
+    run_migrations(engine)
+    if settings.SEED_ON_STARTUP:
+        seed()
 
 
 @app.get("/health")

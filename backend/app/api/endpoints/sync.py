@@ -7,12 +7,13 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_role
+from app.api.deps import ADMIN_ROLES, READING_ROLES, require_role
 from app.db.session import get_db
 from app.models.billing import Invoice, InvoiceStatus, Payment, PaymentMethod
 from app.models.household import Household
-from app.models.meter import Meter, MeterReading
-from app.models.user import User, UserRole
+from app.models.meter import Meter
+from app.models.user import User
+from app.services.readings import record_reading
 
 router = APIRouter(prefix="/sync", tags=["sync"])
 
@@ -60,12 +61,7 @@ class SyncResponse(BaseModel):
 def push_offline_data(
     payload: SyncRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(
-        require_role(
-            UserRole.SUPER_ADMIN, UserRole.PARTNER_ADMIN,
-            UserRole.COMMUNITY_ADMIN, UserRole.OPERATOR, UserRole.TREASURER,
-        )
-    ),
+    current_user: User = Depends(require_role(*READING_ROLES)),
 ):
     reading_results: list[SyncResultItem] = []
     payment_results: list[SyncResultItem] = []
@@ -77,22 +73,14 @@ def push_offline_data(
                 reading_results.append(SyncResultItem(client_id=r.client_id, success=False, error="Meter not found"))
                 continue
 
-            previous_value = meter.last_reading_value
-            consumption = max(0, r.reading_value - previous_value)
-
-            reading = MeterReading(
+            reading = record_reading(
+                db,
+                meter,
                 reading_value=r.reading_value,
-                previous_value=previous_value,
-                consumption_m3=round(consumption, 1),
                 reading_date=r.reading_date,
                 notes=r.notes,
                 recorded_by=r.recorded_by or current_user.full_name,
-                meter_id=r.meter_id,
             )
-            db.add(reading)
-            meter.last_reading_value = r.reading_value
-            meter.last_reading_date = r.reading_date
-            db.flush()
 
             reading_results.append(SyncResultItem(
                 client_id=r.client_id, server_id=str(reading.id), success=True,
@@ -102,6 +90,14 @@ def push_offline_data(
 
     for p in payload.payments:
         try:
+            if current_user.role not in ADMIN_ROLES:
+                payment_results.append(SyncResultItem(
+                    client_id=p.client_id,
+                    success=False,
+                    error="Only administrators and treasurers can record payments",
+                ))
+                continue
+
             method = PaymentMethod.CASH
             if p.payment_method == "bank_transfer":
                 method = PaymentMethod.BANK_TRANSFER

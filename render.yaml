@@ -1,12 +1,12 @@
 databases:
-  - name: cwip-db
+  - name: flow-db
     plan: free
-    databaseName: cwip
-    user: cwip
+    databaseName: flow
+    user: flow
 
 services:
   - type: web
-    name: cwip
+    name: flow
     runtime: python
     plan: free
     buildCommand: ./build.sh
@@ -14,9 +14,11 @@ services:
     envVars:
       - key: DATABASE_URL
         fromDatabase:
-          name: cwip-db
+          name: flow-db
           property: connectionURI
       - key: SECRET_KEY
         generateValue: true
       - key: PYTHON_VERSION
         value: "3.12.0"
+      - key: NODE_VERSION
+        value: "20.11.1"
