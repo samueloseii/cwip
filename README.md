@@ -49,7 +49,7 @@ npm run dev   # starts on http://localhost:3000
 ```
 
 ### Demo Login
-- **Email:** `admin@cwip.org`
+- **Email:** `admin@flow.app`
 - **Password:** `admin123`
 
 ### Docker

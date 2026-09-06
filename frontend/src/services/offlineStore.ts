@@ -1,4 +1,4 @@
-const DB_NAME = 'cwip-offline'
+const DB_NAME = 'flow-offline'
 const DB_VERSION = 1
 const READINGS_STORE = 'pending_readings'
 const PAYMENTS_STORE = 'pending_payments'
