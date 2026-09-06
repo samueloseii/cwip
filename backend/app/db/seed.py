@@ -78,7 +78,7 @@ def _seed_data(db: Session):
 
     # Admin user
     admin = User(
-        email="admin@cwip.org", hashed_password=get_password_hash("admin123"),
+        email="admin@flow.app", hashed_password=get_password_hash("admin123"),
         full_name="Flow Administrator", role=UserRole.SUPER_ADMIN,
     )
     db.add(admin)
@@ -98,7 +98,7 @@ def _seed_data(db: Session):
     # the operator reads meters, the treasurer handles money.
     for ci, community in enumerate(communities[:6]):
         db.add(User(
-            email=f"sysadmin{ci+1}@cwip.org",
+            email=f"sysadmin{ci+1}@flow.app",
             hashed_password=get_password_hash("sysadmin123"),
             full_name=f"System Administrator - {community.name}",
             role=UserRole.COMMUNITY_ADMIN,
@@ -106,7 +106,7 @@ def _seed_data(db: Session):
             community_id=community.id,
         ))
         op = User(
-            email=f"operator{ci+1}@cwip.org",
+            email=f"operator{ci+1}@flow.app",
             hashed_password=get_password_hash("operator123"),
             full_name=f"Operator - {community.name}",
             role=UserRole.OPERATOR,
@@ -115,7 +115,7 @@ def _seed_data(db: Session):
         )
         db.add(op)
         tr = User(
-            email=f"treasurer{ci+1}@cwip.org",
+            email=f"treasurer{ci+1}@flow.app",
             hashed_password=get_password_hash("treasurer123"),
             full_name=f"Treasurer - {community.name}",
             role=UserRole.TREASURER,
