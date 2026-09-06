@@ -4,6 +4,7 @@ from datetime import datetime
 from pydantic import BaseModel
 
 from app.models.household import HouseholdStatus
+from app.schemas.billing import InvoiceResponse, PaymentResponse
 
 
 class HouseholdCreate(BaseModel):
@@ -18,6 +19,10 @@ class HouseholdCreate(BaseModel):
     longitude: float | None = None
     notes: str | None = None
     community_id: uuid.UUID
+    # A meter can be registered together with the account.
+    meter_serial_number: str | None = None
+    meter_brand: str | None = None
+    meter_initial_reading: float = 0.0
 
 
 class HouseholdUpdate(BaseModel):
@@ -48,6 +53,26 @@ class HouseholdResponse(BaseModel):
     community_id: uuid.UUID
     created_at: datetime
     updated_at: datetime
+    meter_serial_number: str | None = None
+    last_reading_value: float | None = None
+    last_reading_date: datetime | None = None
+    community_name: str | None = None
+    currency: str | None = None
 
     class Config:
         from_attributes = True
+
+
+class ConsumptionPoint(BaseModel):
+    period: str
+    consumption_m3: float
+
+
+class HouseholdDetail(BaseModel):
+    household: HouseholdResponse
+    consumption_history: list[ConsumptionPoint]
+    invoices: list[InvoiceResponse]
+    payments: list[PaymentResponse]
+    total_billed: float
+    total_paid: float
+    outstanding: float

@@ -10,6 +10,20 @@ from app.models.user import User, UserRole
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
+# Roles that administer a water system: accounts, billing, payments, expenses.
+ADMIN_ROLES = (
+    UserRole.SUPER_ADMIN,
+    UserRole.PARTNER_ADMIN,
+    UserRole.COMMUNITY_ADMIN,
+    UserRole.TREASURER,
+)
+
+# Roles that work in the field: meter readings and issue reports.
+FIELD_ROLES = (UserRole.OPERATOR, UserRole.READER)
+
+# Roles allowed to submit meter readings.
+READING_ROLES = ADMIN_ROLES + (UserRole.OPERATOR,)
+
 
 def get_current_user(
     token: str = Depends(oauth2_scheme),

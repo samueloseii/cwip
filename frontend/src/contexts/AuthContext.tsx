@@ -20,13 +20,14 @@ interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<void>
   logout: () => void
   isAdmin: boolean
-  isOperator: boolean
+  isField: boolean
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
-const ADMIN_ROLES = ['super_admin', 'partner_admin', 'community_admin']
-const OPERATOR_ROLES = ['operator', 'treasurer', 'reader']
+// Treasurers administer billing from the office; only operators/readers work in the field.
+const ADMIN_ROLES = ['super_admin', 'partner_admin', 'community_admin', 'treasurer']
+const FIELD_ROLES = ['operator', 'reader']
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [auth, setAuth] = useState<AuthState>({
@@ -74,10 +75,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [auth.isAuthenticated, auth.user, fetchUser])
 
   const isAdmin = !!auth.user && ADMIN_ROLES.includes(auth.user.role)
-  const isOperator = !!auth.user && OPERATOR_ROLES.includes(auth.user.role)
+  const isField = !!auth.user && FIELD_ROLES.includes(auth.user.role)
 
   return (
-    <AuthContext.Provider value={{ ...auth, login, logout, isAdmin, isOperator }}>
+    <AuthContext.Provider value={{ ...auth, login, logout, isAdmin, isField }}>
       {children}
     </AuthContext.Provider>
   )

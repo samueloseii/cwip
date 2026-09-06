@@ -3,8 +3,8 @@ import {
   LayoutDashboard,
   MapPin,
   Home,
-  Gauge,
   Receipt,
+  Wallet,
   Wrench,
   BarChart3,
   LogOut,
@@ -16,8 +16,8 @@ const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/communities', icon: MapPin, label: 'Communities' },
   { to: '/households', icon: Home, label: 'Households' },
-  { to: '/meters', icon: Gauge, label: 'Meters' },
   { to: '/billing', icon: Receipt, label: 'Billing' },
+  { to: '/expenses', icon: Wallet, label: 'Expenses' },
   { to: '/maintenance', icon: Wrench, label: 'Maintenance' },
   { to: '/analytics', icon: BarChart3, label: 'Analytics' },
 ]
@@ -25,18 +25,19 @@ const navItems = [
 const roleLabels: Record<string, string> = {
   super_admin: 'Super Admin',
   partner_admin: 'Partner Admin',
-  community_admin: 'Community Admin',
+  community_admin: 'System Administrator',
+  treasurer: 'Treasurer',
 }
 
 export default function Sidebar() {
   const { logout, user } = useAuth()
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 bg-primary-900 text-white flex flex-col">
+    <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-primary-900 text-white flex flex-col print:hidden">
       <div className="p-6 flex items-center gap-3 border-b border-primary-800">
         <Droplets className="h-8 w-8 text-primary-300" />
         <div>
-          <h1 className="text-lg font-bold">CWIP</h1>
+          <h1 className="text-lg font-bold">Flow</h1>
           <p className="text-xs text-primary-300">Water Intelligence</p>
         </div>
       </div>

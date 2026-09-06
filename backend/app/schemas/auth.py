@@ -1,3 +1,5 @@
+import uuid
+
 from pydantic import BaseModel, EmailStr
 
 from app.models.user import UserRole
@@ -29,3 +31,5 @@ class RegisterRequest(BaseModel):
     phone: str | None = None
     role: UserRole = UserRole.READER
     preferred_language: str = "es"
+    partner_id: uuid.UUID | None = None
+    community_id: uuid.UUID | None = None
