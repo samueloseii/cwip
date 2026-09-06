@@ -22,9 +22,9 @@ const highlights = [
 ]
 
 const demoAccounts = [
-  { label: 'System administrator', email: 'admin@cwip.org', password: 'admin123' },
-  { label: 'Treasurer', email: 'treasurer1@cwip.org', password: 'treasurer123' },
-  { label: 'Operator (field)', email: 'operator1@cwip.org', password: 'operator123' },
+  { label: 'System administrator', email: 'admin@flow.app', password: 'admin123' },
+  { label: 'Treasurer', email: 'treasurer1@flow.app', password: 'treasurer123' },
+  { label: 'Operator (field)', email: 'operator1@flow.app', password: 'operator123' },
 ]
 
 export default function LoginPage() {

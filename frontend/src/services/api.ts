@@ -6,7 +6,7 @@ const api = axios.create({
 })
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('cwip_token')
+  const token = localStorage.getItem('flow_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -17,7 +17,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401 && !error.config.url?.includes('/auth/login')) {
-      localStorage.removeItem('cwip_token')
+      localStorage.removeItem('flow_token')
       window.location.href = '/login'
     }
     return Promise.reject(error)
