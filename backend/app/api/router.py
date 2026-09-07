@@ -10,11 +10,13 @@ from app.api.endpoints import (
     households,
     maintenance,
     meters,
+    partners,
     sync,
 )
 
 api_router = APIRouter()
 api_router.include_router(auth.router)
+api_router.include_router(partners.router)
 api_router.include_router(communities.router)
 api_router.include_router(households.router)
 api_router.include_router(meters.router)

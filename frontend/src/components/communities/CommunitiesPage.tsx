@@ -1,6 +1,17 @@
-import { useEffect, useState } from 'react'
-import { MapPin, Plus, Users } from 'lucide-react'
+import { FormEvent, useEffect, useState } from 'react'
+import { MapPin, Plus } from 'lucide-react'
 import api from '../../services/api'
+import {
+  Card,
+  EmptyState,
+  Field,
+  Modal,
+  PageHeader,
+  Spinner,
+  inputClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+} from '../ui'
 
 interface Community {
   id: string
@@ -9,90 +20,291 @@ interface Community {
   region: string | null
   total_connections: number
   water_system_type: string
-  community_size: string
   currency: string
   tariff_fixed: number
   tariff_per_m3: number
 }
 
+interface Organization {
+  id: string
+  name: string
+}
+
+const systemTypeLabel: Record<string, string> = {
+  gravity_fed: 'Gravity-fed',
+  pumped: 'Pumped',
+  mixed: 'Mixed',
+}
+
+const emptyForm = {
+  name: '',
+  country: '',
+  region: '',
+  currency: 'USD',
+  water_system_type: 'gravity_fed',
+  community_size: 'small',
+  population: '',
+  tariff_fixed: '',
+  tariff_per_m3: '',
+  partner_id: '',
+  new_partner_name: '',
+}
+
 export default function CommunitiesPage() {
   const [communities, setCommunities] = useState<Community[]>([])
+  const [organizations, setOrganizations] = useState<Organization[]>([])
   const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState(emptyForm)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
-  useEffect(() => {
-    api.get('/communities/')
-      .then((res) => setCommunities(res.data))
+  function load() {
+    setLoading(true)
+    Promise.all([api.get('/communities/'), api.get('/partners/')])
+      .then(([communityRes, partnerRes]) => {
+        setCommunities(communityRes.data)
+        setOrganizations(partnerRes.data)
+      })
       .catch(() => setCommunities([]))
       .finally(() => setLoading(false))
-  }, [])
+  }
 
-  const systemTypeLabel: Record<string, string> = {
-    gravity_fed: 'Gravity-Fed',
-    pumped: 'Pumped',
-    mixed: 'Mixed',
+  useEffect(load, [])
+
+  function openForm() {
+    setForm({ ...emptyForm, partner_id: organizations[0]?.id ?? '' })
+    setError('')
+    setShowForm(true)
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    setError('')
+    try {
+      let partnerId = form.partner_id
+      if (!partnerId) {
+        const created = await api.post('/partners/', {
+          name: form.new_partner_name.trim() || form.name,
+          country: form.country,
+        })
+        partnerId = created.data.id
+      }
+      await api.post('/communities/', {
+        name: form.name,
+        country: form.country,
+        region: form.region || null,
+        currency: form.currency,
+        water_system_type: form.water_system_type,
+        community_size: form.community_size,
+        population: form.population ? Number(form.population) : null,
+        tariff_fixed: Number(form.tariff_fixed || 0),
+        tariff_per_m3: Number(form.tariff_per_m3 || 0),
+        partner_id: partnerId,
+      })
+      setShowForm(false)
+      load()
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? 'Could not save the community.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Communities</h1>
-          <p className="text-gray-500 mt-1">Manage community water systems</p>
-        </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors">
-          <Plus className="h-4 w-4" />
-          Add Community
-        </button>
-      </div>
+      <PageHeader
+        title="Communities"
+        subtitle="Water systems, their tariffs and the organization responsible"
+        actions={
+          <button onClick={openForm} className={primaryButtonClass}>
+            <Plus className="h-4 w-4" />
+            New community
+          </button>
+        }
+      />
 
       {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
-        </div>
+        <Spinner />
+      ) : communities.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={MapPin}
+            title="No communities yet"
+            hint="Add the first community with its tariff, then register households against it."
+          />
+        </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {communities.map((c) => (
-            <div key={c.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between mb-4">
+            <Card key={c.id} className="p-5">
+              <div className="flex items-start justify-between gap-3">
                 <div>
                   <h3 className="font-semibold text-gray-900">{c.name}</h3>
-                  <div className="flex items-center gap-1 text-sm text-gray-500 mt-1">
-                    <MapPin className="h-3.5 w-3.5" />
-                    {c.region ? `${c.region}, ` : ''}{c.country}
-                  </div>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    {c.region ? `${c.region}, ` : ''}
+                    {c.country}
+                  </p>
                 </div>
-                <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                  c.water_system_type === 'gravity_fed' ? 'bg-green-100 text-green-700' :
-                  c.water_system_type === 'pumped' ? 'bg-blue-100 text-blue-700' :
-                  'bg-purple-100 text-purple-700'
-                }`}>
-                  {systemTypeLabel[c.water_system_type] || c.water_system_type}
+                <span className="text-xs text-gray-500 whitespace-nowrap">
+                  {systemTypeLabel[c.water_system_type] ?? c.water_system_type}
                 </span>
               </div>
-
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <div className="flex items-center gap-1 text-gray-500">
-                    <Users className="h-3.5 w-3.5" />
-                    Connections
-                  </div>
-                  <p className="font-semibold mt-1">{c.total_connections}</p>
+              <dl className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <dt className="text-gray-500 text-xs">Connections</dt>
+                  <dd className="font-medium text-gray-900">{c.total_connections}</dd>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-gray-500">Tariff</p>
-                  <p className="font-semibold mt-1">{c.currency} {c.tariff_fixed} + {c.tariff_per_m3}/m³</p>
+                <div>
+                  <dt className="text-gray-500 text-xs">Tariff</dt>
+                  <dd className="font-medium text-gray-900">
+                    {c.currency} {c.tariff_fixed} + {c.tariff_per_m3}/m³
+                  </dd>
                 </div>
-              </div>
-
-              <a
-                href={`/communities/${c.id}`}
-                className="block mt-4 text-center py-2 text-sm text-primary-600 bg-primary-50 rounded-lg hover:bg-primary-100 transition-colors"
-              >
-                View Details
-              </a>
-            </div>
+              </dl>
+            </Card>
           ))}
         </div>
+      )}
+
+      {showForm && (
+        <Modal
+          title="New community"
+          description="Tariffs are used when bills are generated."
+          onClose={() => setShowForm(false)}
+        >
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <p className="bg-red-50 border border-red-200 text-red-600 rounded-lg px-3 py-2 text-sm">
+                {error}
+              </p>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Community name">
+                <input
+                  className={inputClass}
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  required
+                />
+              </Field>
+              <Field label="Country">
+                <input
+                  className={inputClass}
+                  value={form.country}
+                  onChange={(e) => setForm({ ...form, country: e.target.value })}
+                  required
+                />
+              </Field>
+              <Field label="Region">
+                <input
+                  className={inputClass}
+                  value={form.region}
+                  onChange={(e) => setForm({ ...form, region: e.target.value })}
+                />
+              </Field>
+              <Field label="Population">
+                <input
+                  type="number"
+                  min="0"
+                  className={inputClass}
+                  value={form.population}
+                  onChange={(e) => setForm({ ...form, population: e.target.value })}
+                />
+              </Field>
+              <Field label="Water system">
+                <select
+                  className={inputClass}
+                  value={form.water_system_type}
+                  onChange={(e) => setForm({ ...form, water_system_type: e.target.value })}
+                >
+                  <option value="gravity_fed">Gravity-fed</option>
+                  <option value="pumped">Pumped</option>
+                  <option value="mixed">Mixed</option>
+                </select>
+              </Field>
+              <Field label="Size">
+                <select
+                  className={inputClass}
+                  value={form.community_size}
+                  onChange={(e) => setForm({ ...form, community_size: e.target.value })}
+                >
+                  <option value="small">Small</option>
+                  <option value="medium">Medium</option>
+                  <option value="large">Large</option>
+                </select>
+              </Field>
+              <Field label="Currency" hint="Three-letter code, e.g. GHS, USD">
+                <input
+                  className={inputClass}
+                  value={form.currency}
+                  onChange={(e) => setForm({ ...form, currency: e.target.value.toUpperCase() })}
+                  maxLength={5}
+                  required
+                />
+              </Field>
+              <Field label="Fixed charge per bill">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  className={inputClass}
+                  value={form.tariff_fixed}
+                  onChange={(e) => setForm({ ...form, tariff_fixed: e.target.value })}
+                  required
+                />
+              </Field>
+              <Field label="Charge per m³">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  className={inputClass}
+                  value={form.tariff_per_m3}
+                  onChange={(e) => setForm({ ...form, tariff_per_m3: e.target.value })}
+                  required
+                />
+              </Field>
+              <Field label="Organization">
+                <select
+                  className={inputClass}
+                  value={form.partner_id}
+                  onChange={(e) => setForm({ ...form, partner_id: e.target.value })}
+                >
+                  {organizations.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.name}
+                    </option>
+                  ))}
+                  <option value="">Create a new organization…</option>
+                </select>
+              </Field>
+              {!form.partner_id && (
+                <Field label="New organization name">
+                  <input
+                    className={inputClass}
+                    value={form.new_partner_name}
+                    onChange={(e) => setForm({ ...form, new_partner_name: e.target.value })}
+                    required
+                  />
+                </Field>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                className={secondaryButtonClass}
+                onClick={() => setShowForm(false)}
+              >
+                Cancel
+              </button>
+              <button type="submit" className={primaryButtonClass} disabled={saving}>
+                {saving ? 'Saving…' : 'Create community'}
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
     </div>
   )

@@ -1,175 +1,327 @@
 import { useEffect, useState } from 'react'
+import { BarChart3 } from 'lucide-react'
 import {
-  AlertTriangle,
-  TrendingDown,
-  Wrench,
-  Shield,
-} from 'lucide-react'
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import api from '../../services/api'
+import {
+  Card,
+  EmptyState,
+  PageHeader,
+  Spinner,
+  StatCard,
+  formatMoney,
+  inputClass,
+} from '../ui'
 
 interface Community {
   id: string
   name: string
 }
 
+interface MonthlyPoint {
+  month: string
+  label: string
+  consumption_m3: number
+  billed: number
+  collected: number
+  expenses: number
+}
+
+interface Overview {
+  currency: string
+  months: MonthlyPoint[]
+  totals: {
+    billed: number
+    collected: number
+    expenses: number
+    arrears: number
+    net_balance: number
+    collection_rate: number
+    consumption_m3: number
+    households: number
+    metered_households: number
+    open_maintenance: number
+  }
+  aging: { bucket: string; amount: number; invoices: number }[]
+  top_consumers: {
+    household_id: string
+    account_number: string
+    head_of_household: string
+    consumption_m3: number
+  }[]
+  invoice_status: { status: string; count: number; amount: number }[]
+}
+
+const AGING_COLORS = ['#0ea5e9', '#38bdf8', '#fbbf24', '#f97316', '#ef4444']
+
+function ChartCard({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string
+  subtitle?: string
+  children: React.ReactNode
+}) {
+  return (
+    <Card className="p-5">
+      <div className="mb-4">
+        <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
+        {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
+      </div>
+      <div className="h-64">{children}</div>
+    </Card>
+  )
+}
+
+const axisProps = {
+  tick: { fontSize: 11, fill: '#6b7280' },
+  axisLine: { stroke: '#e5e7eb' },
+  tickLine: false,
+}
+
 export default function AnalyticsPage() {
   const [communities, setCommunities] = useState<Community[]>([])
-  const [selectedCommunity, setSelectedCommunity] = useState<string>('')
-  const [paymentRisk, setPaymentRisk] = useState<any[]>([])
-  const [anomalies, setAnomalies] = useState<any[]>([])
-  const [maintenancePriority, setMaintenancePriority] = useState<any[]>([])
-  const [financialAlerts, setFinancialAlerts] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
+  const [selected, setSelected] = useState('')
+  const [months, setMonths] = useState(12)
+  const [data, setData] = useState<Overview | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api.get('/communities/').then((res) => {
-      setCommunities(res.data)
-      if (res.data.length > 0) {
-        setSelectedCommunity(res.data[0].id)
-      }
-    })
+    api
+      .get('/communities/')
+      .then((res) => {
+        setCommunities(res.data)
+        if (res.data.length > 0) setSelected(res.data[0].id)
+        else setLoading(false)
+      })
+      .catch(() => setLoading(false))
   }, [])
 
   useEffect(() => {
-    if (!selectedCommunity) return
+    if (!selected) return
     setLoading(true)
-    Promise.all([
-      api.get(`/analytics/payment-risk/${selectedCommunity}`),
-      api.get(`/analytics/consumption-anomalies/${selectedCommunity}`),
-      api.get(`/analytics/maintenance-priority/${selectedCommunity}`),
-      api.get(`/analytics/financial-alerts/${selectedCommunity}`),
-    ])
-      .then(([risk, anom, maint, alerts]) => {
-        setPaymentRisk(risk.data)
-        setAnomalies(anom.data)
-        setMaintenancePriority(maint.data)
-        setFinancialAlerts(alerts.data)
-      })
-      .catch(() => {})
+    api
+      .get(`/analytics/overview?community_id=${selected}&months=${months}`)
+      .then((res) => setData(res.data))
+      .catch(() => setData(null))
       .finally(() => setLoading(false))
-  }, [selectedCommunity])
+  }, [selected, months])
 
-  const riskColor: Record<string, string> = {
-    high: 'text-red-600 bg-red-50',
-    medium: 'text-amber-600 bg-amber-50',
-    low: 'text-green-600 bg-green-50',
-  }
+  const currency = data?.currency ?? ''
+  const hasFinancials = !!data && data.months.some((m) => m.billed || m.collected || m.expenses)
+  const hasConsumption = !!data && data.months.some((m) => m.consumption_m3 > 0)
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">AI Analytics</h1>
-          <p className="text-gray-500 mt-1">Intelligent insights and recommendations</p>
-        </div>
-        <select
-          value={selectedCommunity}
-          onChange={(e) => setSelectedCommunity(e.target.value)}
-          className="px-4 py-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary-500"
-        >
-          {communities.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
-      </div>
+      <PageHeader
+        title="Analytics"
+        subtitle="Water delivered, money collected and money spent"
+        actions={
+          <>
+            <select
+              value={selected}
+              onChange={(e) => setSelected(e.target.value)}
+              className={`${inputClass} w-56`}
+            >
+              {communities.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={months}
+              onChange={(e) => setMonths(Number(e.target.value))}
+              className={`${inputClass} w-36`}
+            >
+              <option value={6}>Last 6 months</option>
+              <option value={12}>Last 12 months</option>
+              <option value={24}>Last 24 months</option>
+            </select>
+          </>
+        }
+      />
 
-      {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
-        </div>
+      {communities.length === 0 && !loading ? (
+        <Card>
+          <EmptyState
+            icon={BarChart3}
+            title="No community yet"
+            hint="Create a community and register households — analytics build up as readings and payments are recorded."
+          />
+        </Card>
+      ) : loading || !data ? (
+        <Spinner />
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Financial Sustainability Alerts */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Shield className="h-5 w-5 text-primary-600" />
-              <h3 className="text-lg font-semibold">Financial Alerts</h3>
-            </div>
-            <div className="space-y-3">
-              {financialAlerts.map((alert, i) => (
-                <div key={i} className={`p-4 rounded-lg border ${
-                  alert.severity === 'high' ? 'bg-red-50 border-red-200' :
-                  alert.severity === 'medium' ? 'bg-amber-50 border-amber-200' :
-                  'bg-green-50 border-green-200'
-                }`}>
-                  <p className="font-medium text-sm">{alert.message}</p>
-                  <p className="text-xs mt-1 text-gray-600">{alert.recommendation}</p>
-                </div>
-              ))}
-            </div>
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              label="Collection rate"
+              value={`${data.totals.collection_rate}%`}
+              hint={`${formatMoney(currency, data.totals.collected)} of ${formatMoney(currency, data.totals.billed)}`}
+              tone={data.totals.collection_rate >= 80 ? 'positive' : 'warning'}
+            />
+            <StatCard
+              label="Outstanding"
+              value={formatMoney(currency, data.totals.arrears)}
+              hint="Unpaid balance on issued bills"
+              tone={data.totals.arrears > 0 ? 'danger' : 'default'}
+            />
+            <StatCard
+              label="Net balance"
+              value={formatMoney(currency, data.totals.net_balance)}
+              hint="Collected minus expenses"
+              tone={data.totals.net_balance >= 0 ? 'positive' : 'danger'}
+            />
+            <StatCard
+              label="Water billed"
+              value={`${data.totals.consumption_m3} m³`}
+              hint={`${data.totals.metered_households} of ${data.totals.households} households metered`}
+            />
           </div>
 
-          {/* Payment Risk */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <AlertTriangle className="h-5 w-5 text-amber-600" />
-              <h3 className="text-lg font-semibold">Payment Risk</h3>
-            </div>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {paymentRisk.filter(r => r.risk_level !== 'low').slice(0, 10).map((r, i) => (
-                <div key={i} className={`flex items-center justify-between p-3 rounded-lg ${riskColor[r.risk_level]}`}>
-                  <div>
-                    <p className="text-sm font-medium">{r.head_of_household}</p>
-                    <p className="text-xs opacity-75">{r.account_number}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold">${r.total_arrears.toFixed(2)}</p>
-                    <p className="text-xs">{r.overdue_invoices} overdue</p>
-                  </div>
-                </div>
-              ))}
-              {paymentRisk.filter(r => r.risk_level !== 'low').length === 0 && (
-                <p className="text-gray-500 text-sm">No payment risk detected</p>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <ChartCard title="Consumption" subtitle="Cubic metres recorded per month">
+              {hasConsumption ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={data.months} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                    <XAxis dataKey="label" {...axisProps} />
+                    <YAxis {...axisProps} />
+                    <Tooltip formatter={(v: number) => `${v} m³`} />
+                    <Area
+                      type="monotone"
+                      dataKey="consumption_m3"
+                      name="Consumption"
+                      stroke="#0284c7"
+                      fill="#bae6fd"
+                      strokeWidth={2}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <EmptyState icon={BarChart3} title="No readings recorded yet" />
               )}
-            </div>
+            </ChartCard>
+
+            <ChartCard title="Billed vs collected" subtitle="How much of each month's billing came in">
+              {hasFinancials ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={data.months} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                    <XAxis dataKey="label" {...axisProps} />
+                    <YAxis {...axisProps} />
+                    <Tooltip formatter={(v: number) => formatMoney(currency, v)} />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Bar dataKey="billed" name="Billed" fill="#cbd5e1" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="collected" name="Collected" fill="#0284c7" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <EmptyState icon={BarChart3} title="No bills issued yet" />
+              )}
+            </ChartCard>
+
+            <ChartCard title="Revenue vs expenses" subtitle="Is the system covering its costs?">
+              {hasFinancials ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={data.months} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                    <XAxis dataKey="label" {...axisProps} />
+                    <YAxis {...axisProps} />
+                    <Tooltip formatter={(v: number) => formatMoney(currency, v)} />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Line
+                      type="monotone"
+                      dataKey="collected"
+                      name="Collected"
+                      stroke="#059669"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="expenses"
+                      name="Expenses"
+                      stroke="#dc2626"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <EmptyState icon={BarChart3} title="No payments or expenses recorded yet" />
+              )}
+            </ChartCard>
+
+            <ChartCard title="Arrears ageing" subtitle="How long unpaid balances have been outstanding">
+              {data.totals.arrears > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={data.aging} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                    <XAxis dataKey="bucket" {...axisProps} />
+                    <YAxis {...axisProps} />
+                    <Tooltip formatter={(v: number) => formatMoney(currency, v)} />
+                    <Bar dataKey="amount" name="Outstanding" radius={[4, 4, 0, 0]}>
+                      {data.aging.map((_, index) => (
+                        <Cell key={index} fill={AGING_COLORS[index % AGING_COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <EmptyState icon={BarChart3} title="Nothing outstanding" />
+              )}
+            </ChartCard>
           </div>
 
-          {/* Consumption Anomalies */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingDown className="h-5 w-5 text-purple-600" />
-              <h3 className="text-lg font-semibold">Consumption Anomalies</h3>
-            </div>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {anomalies.map((a, i) => (
-                <div key={i} className="p-3 bg-purple-50 rounded-lg">
-                  <p className="text-sm font-medium text-purple-800">{a.message}</p>
-                  <p className="text-xs text-purple-600 mt-1">Meter: {a.serial_number}</p>
-                </div>
-              ))}
-              {anomalies.length === 0 && (
-                <p className="text-gray-500 text-sm">No anomalies detected</p>
-              )}
-            </div>
-          </div>
-
-          {/* Maintenance Priority */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Wrench className="h-5 w-5 text-orange-600" />
-              <h3 className="text-lg font-semibold">Maintenance Priority</h3>
-            </div>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {maintenancePriority.slice(0, 8).map((m, i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="text-sm font-medium">{m.title}</p>
-                    <p className="text-xs text-gray-500">{m.recommendation}</p>
-                  </div>
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    m.priority === 'critical' ? 'bg-red-100 text-red-700' :
-                    m.priority === 'high' ? 'bg-orange-100 text-orange-700' :
-                    'bg-amber-100 text-amber-700'
-                  }`}>
-                    {m.priority}
-                  </span>
-                </div>
-              ))}
-              {maintenancePriority.length === 0 && (
-                <p className="text-gray-500 text-sm">No pending maintenance</p>
-              )}
-            </div>
-          </div>
+          <Card className="p-5">
+            <h2 className="text-sm font-semibold text-gray-900 mb-4">Highest consumption</h2>
+            {data.top_consumers.length === 0 ? (
+              <EmptyState icon={BarChart3} title="No readings recorded yet" />
+            ) : (
+              <div className="space-y-2">
+                {data.top_consumers.map((h) => {
+                  const max = data.top_consumers[0].consumption_m3 || 1
+                  return (
+                    <a
+                      key={h.household_id}
+                      href={`/households/${h.household_id}`}
+                      className="block group"
+                    >
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-700 group-hover:text-primary-700">
+                          {h.head_of_household}
+                          <span className="text-gray-400"> · {h.account_number}</span>
+                        </span>
+                        <span className="font-medium text-gray-900">{h.consumption_m3} m³</span>
+                      </div>
+                      <div className="h-1.5 mt-1 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary-500 rounded-full"
+                          style={{ width: `${(h.consumption_m3 / max) * 100}%` }}
+                        />
+                      </div>
+                    </a>
+                  )
+                })}
+              </div>
+            )}
+          </Card>
         </div>
       )}
     </div>

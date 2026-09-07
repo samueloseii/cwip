@@ -32,5 +32,5 @@ def run_migrations(engine: Engine) -> None:
         try:
             with engine.begin() as conn:
                 conn.execute(text(statement))
-        except Exception:  # pragma: no cover - a missing table is fine on first boot
-            logger.warning("Skipped migration: %s", statement, exc_info=True)
+        except Exception as exc:  # pragma: no cover - already applied or table absent
+            logger.info("Skipped migration (%s): %s", exc.__class__.__name__, statement)
