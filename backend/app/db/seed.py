@@ -1,6 +1,11 @@
-"""Seed database with demo data for the Flow pilot."""
+"""Sample data for local development only.
+
+Production databases are prepared by ``app.db.bootstrap``, which creates no
+records beyond the first administrator. Run this with ``--demo`` to opt in.
+"""
 
 import random
+import sys
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
@@ -317,4 +322,9 @@ def _seed_data(db: Session):
 
 
 if __name__ == "__main__":
+    if "--demo" not in sys.argv:
+        raise SystemExit(
+            "Refusing to insert sample data. Re-run with --demo for local development, "
+            "or use `python -m app.db.bootstrap` for a real deployment."
+        )
     seed()
