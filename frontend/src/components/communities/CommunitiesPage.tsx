@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react'
-import { MapPin, Plus } from 'lucide-react'
+import { MapPin, Plus, Trash2 } from 'lucide-react'
 import api from '../../services/api'
 import {
   Card,
@@ -112,6 +112,16 @@ export default function CommunitiesPage() {
     }
   }
 
+  async function remove(community: { id: string; name: string }) {
+    if (!window.confirm(`Delete ${community.name}?`)) return
+    try {
+      await api.delete(`/communities/${community.id}`)
+      load()
+    } catch (err: any) {
+      window.alert(err?.response?.data?.detail ?? 'Could not delete this community.')
+    }
+  }
+
   return (
     <div>
       <PageHeader
@@ -147,9 +157,18 @@ export default function CommunitiesPage() {
                     {c.country}
                   </p>
                 </div>
-                <span className="text-xs text-gray-500 whitespace-nowrap">
-                  {systemTypeLabel[c.water_system_type] ?? c.water_system_type}
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-gray-500 whitespace-nowrap">
+                    {systemTypeLabel[c.water_system_type] ?? c.water_system_type}
+                  </span>
+                  <button
+                    aria-label={`Delete ${c.name}`}
+                    className="text-gray-300 hover:text-red-600"
+                    onClick={() => remove(c)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
               <dl className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-3 text-sm">
                 <div>

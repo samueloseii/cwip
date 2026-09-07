@@ -1,6 +1,6 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { DollarSign, FilePlus2, Printer, Receipt, Search } from 'lucide-react'
+import { DollarSign, FilePlus2, Printer, Receipt, Search, Trash2 } from 'lucide-react'
 import api from '../../services/api'
 import {
   Badge,
@@ -124,6 +124,26 @@ export default function BillingPage() {
       .then((res) => setCommunities(res.data))
       .catch(() => setCommunities([]))
   }, [])
+
+  async function deleteInvoice(invoice: Invoice) {
+    if (!window.confirm(`Delete bill ${invoice.invoice_number}?`)) return
+    try {
+      await api.delete(`/billing/invoices/${invoice.id}`)
+      load()
+    } catch (err: any) {
+      window.alert(err?.response?.data?.detail ?? 'Could not delete this bill.')
+    }
+  }
+
+  async function deletePayment(payment: Payment) {
+    if (!window.confirm('Delete this payment and restore the balance it settled?')) return
+    try {
+      await api.delete(`/billing/payments/${payment.id}`)
+      load()
+    } catch (err: any) {
+      window.alert(err?.response?.data?.detail ?? 'Could not delete this payment.')
+    }
+  }
 
   async function handleGenerate(e: FormEvent) {
     e.preventDefault()
@@ -351,6 +371,13 @@ export default function BillingPage() {
                       >
                         <Printer className="h-4 w-4" />
                       </button>
+                      <button
+                        onClick={() => deleteInvoice(inv)}
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                        title="Delete bill"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -377,6 +404,7 @@ export default function BillingPage() {
                   <th className="px-6 py-3">Method</th>
                   <th className="px-6 py-3">Receipt</th>
                   <th className="px-6 py-3 text-right">Amount</th>
+                  <th className="px-6 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -394,6 +422,15 @@ export default function BillingPage() {
                     <td className="px-6 py-4 text-sm text-gray-500">{p.receipt_number || '—'}</td>
                     <td className="px-6 py-4 text-sm text-right font-medium text-emerald-600">
                       {formatMoney(p.currency, p.amount)}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        onClick={() => deletePayment(p)}
+                        className="p-1.5 text-gray-300 hover:text-red-600 hover:bg-red-50 rounded"
+                        title="Delete payment"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </td>
                   </tr>
                 ))}

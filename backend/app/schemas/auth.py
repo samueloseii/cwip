@@ -20,6 +20,8 @@ class UserResponse(BaseModel):
     email: str
     full_name: str
     role: str
+    phone: str | None = None
+    is_active: bool = True
     partner_id: str | None = None
     community_id: str | None = None
 
@@ -32,4 +34,19 @@ class RegisterRequest(BaseModel):
     role: UserRole = UserRole.READER
     preferred_language: str = "es"
     partner_id: uuid.UUID | None = None
+    community_id: uuid.UUID | None = None
+
+
+class AccessRequest(BaseModel):
+    """Someone asking an administrator for a login."""
+
+    email: EmailStr
+    password: str
+    full_name: str
+    phone: str | None = None
+    requested_role: UserRole = UserRole.OPERATOR
+
+
+class ApprovalRequest(BaseModel):
+    role: UserRole
     community_id: uuid.UUID | None = None

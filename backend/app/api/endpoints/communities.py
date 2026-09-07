@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, require_role
 from app.db.session import get_db
 from app.models.community import Community
+from app.models.household import Household
 from app.models.user import User, UserRole
 from app.schemas.community import CommunityCreate, CommunityResponse, CommunityUpdate
 
@@ -73,3 +74,24 @@ def update_community(
     db.commit()
     db.refresh(community)
     return community
+
+
+@router.delete("/{community_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_community(
+    community_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.SUPER_ADMIN, UserRole.PARTNER_ADMIN)),
+):
+    community = db.query(Community).filter(Community.id == community_id).first()
+    if not community:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Community not found")
+    if db.query(Household).filter(Household.community_id == community_id).count():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Delete the households in this community first",
+        )
+    db.query(User).filter(User.community_id == community_id).update(
+        {User.community_id: None}, synchronize_session=False
+    )
+    db.delete(community)
+    db.commit()

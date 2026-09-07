@@ -1,132 +1,104 @@
 import { useState, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BarChart3, Droplets, Eye, EyeOff, Gauge, Receipt } from 'lucide-react'
+import { Droplets, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import api from '../../services/api'
 
-const highlights = [
-  {
-    icon: Gauge,
-    title: 'Readings you can trust',
-    text: 'Operators pick a household, see the last reading and get warned about impossible jumps.',
-  },
-  {
-    icon: Receipt,
-    title: 'Billing by household',
-    text: 'Every bill shows who owes what, for how much water, and what is still outstanding.',
-  },
-  {
-    icon: BarChart3,
-    title: 'One view of the system',
-    text: 'Consumption, revenue, expenses and maintenance in a single place for the committee.',
-  },
-]
+const inputClass =
+  'w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none'
 
 export default function LoginPage() {
+  const [mode, setMode] = useState<'signin' | 'request'>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [fullName, setFullName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [requestedRole, setRequestedRole] = useState('operator')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [loading, setLoading] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
 
-  async function handleSubmit(e: FormEvent) {
+  async function handleSignIn(e: FormEvent) {
     e.preventDefault()
     setError('')
     setLoading(true)
     try {
       await login(email, password)
       navigate('/')
-    } catch {
-      setError('That email and password combination was not recognised.')
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.detail ?? 'That email and password combination was not recognised.'
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleRequest(e: FormEvent) {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    try {
+      await api.post('/auth/access-requests', {
+        email,
+        password,
+        full_name: fullName,
+        phone: phone || null,
+        requested_role: requestedRole,
+      })
+      setMode('signin')
+      setNotice('Request sent. An administrator will approve your access.')
+      setPassword('')
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? 'Could not send the request. Try again.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 bg-gray-50">
-      <div className="hidden lg:flex flex-col justify-between bg-gradient-to-br from-primary-700 via-primary-800 to-primary-900 text-white p-12">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center">
-            <Droplets className="h-6 w-6" />
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="w-full max-w-sm">
+        <div className="flex items-center gap-2.5 mb-10">
+          <div className="w-9 h-9 rounded-lg bg-primary-600 flex items-center justify-center">
+            <Droplets className="h-5 w-5 text-white" />
           </div>
-          <div>
-            <p className="font-bold text-lg leading-tight">Flow</p>
-            <p className="text-primary-200 text-sm">Community Water Management</p>
-          </div>
+          <span className="font-semibold text-lg text-gray-900">Flow</span>
         </div>
 
-        <div className="max-w-md">
-          <h2 className="text-3xl font-bold leading-tight">
-            Run the water system like a utility, not a notebook.
-          </h2>
-          <div className="mt-10 space-y-6">
-            {highlights.map((item) => (
-              <div key={item.title} className="flex gap-4">
-                <div className="w-10 h-10 shrink-0 rounded-lg bg-white/10 flex items-center justify-center">
-                  <item.icon className="h-5 w-5" />
+        {mode === 'signin' ? (
+          <>
+            <h1 className="text-xl font-semibold text-gray-900">Sign in</h1>
+            <form onSubmit={handleSignIn} className="mt-6 space-y-4">
+              {notice && (
+                <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg px-3.5 py-2.5 text-sm">
+                  {notice}
                 </div>
-                <div>
-                  <p className="font-semibold">{item.title}</p>
-                  <p className="text-primary-200 text-sm mt-0.5">{item.text}</p>
+              )}
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg px-3.5 py-2.5 text-sm">
+                  {error}
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <p className="text-primary-300 text-xs">
-          Built with community water committees, operators and treasurers.
-        </p>
-      </div>
-
-      <div className="flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md">
-          <div className="lg:hidden flex items-center gap-3 mb-8">
-            <div className="w-11 h-11 rounded-xl bg-primary-100 flex items-center justify-center">
-              <Droplets className="h-6 w-6 text-primary-600" />
-            </div>
-            <div>
-              <p className="font-bold text-lg text-gray-900 leading-tight">Flow</p>
-              <p className="text-gray-500 text-sm">Community Water Management</p>
-            </div>
-          </div>
-
-          <h1 className="text-2xl font-bold text-gray-900">Sign in</h1>
-          <p className="text-gray-500 mt-1 mb-8">
-            Accounts are created by your system administrator.
-          </p>
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg px-4 py-3 text-sm">
-                {error}
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              )}
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-                placeholder="you@community.org"
+                className={inputClass}
+                placeholder="Email"
                 autoComplete="email"
                 required
               />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-2.5 pr-11 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-                  placeholder="Enter password"
+                  className={`${inputClass} pr-11`}
+                  placeholder="Password"
                   autoComplete="current-password"
                   required
                 />
@@ -139,21 +111,99 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-            </div>
-
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2.5 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 disabled:opacity-50"
+              >
+                {loading ? 'Signing in…' : 'Sign in'}
+              </button>
+            </form>
             <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 px-4 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 focus:ring-4 focus:ring-primary-200 transition-colors disabled:opacity-50"
+              type="button"
+              onClick={() => {
+                setMode('request')
+                setError('')
+                setNotice('')
+              }}
+              className="mt-6 text-sm text-primary-600 hover:text-primary-700"
             >
-              {loading ? 'Signing in...' : 'Sign in'}
+              Request access
             </button>
-          </form>
-
-          <p className="mt-8 text-xs text-gray-400">
-            Forgotten your password? Ask your system administrator to reset it.
-          </p>
-        </div>
+          </>
+        ) : (
+          <>
+            <h1 className="text-xl font-semibold text-gray-900">Request access</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              An administrator approves your account and sets your role.
+            </p>
+            <form onSubmit={handleRequest} className="mt-6 space-y-4">
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg px-3.5 py-2.5 text-sm">
+                  {error}
+                </div>
+              )}
+              <input
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className={inputClass}
+                placeholder="Full name"
+                required
+              />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={inputClass}
+                placeholder="Email"
+                autoComplete="email"
+                required
+              />
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className={inputClass}
+                placeholder="Phone (optional)"
+              />
+              <select
+                value={requestedRole}
+                onChange={(e) => setRequestedRole(e.target.value)}
+                className={inputClass}
+              >
+                <option value="operator">Operator — meter readings and issue reports</option>
+                <option value="treasurer">Treasurer — billing and payments</option>
+                <option value="community_admin">Administrator</option>
+              </select>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={inputClass}
+                placeholder="Choose a password"
+                autoComplete="new-password"
+                minLength={8}
+                required
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2.5 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 disabled:opacity-50"
+              >
+                {loading ? 'Sending…' : 'Send request'}
+              </button>
+            </form>
+            <button
+              type="button"
+              onClick={() => {
+                setMode('signin')
+                setError('')
+              }}
+              className="mt-6 text-sm text-primary-600 hover:text-primary-700"
+            >
+              Back to sign in
+            </button>
+          </>
+        )}
       </div>
     </div>
   )

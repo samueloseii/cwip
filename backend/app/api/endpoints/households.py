@@ -229,3 +229,32 @@ def update_household(
     db.refresh(household)
     community = db.query(Community).filter(Community.id == household.community_id).first()
     return _household_response(household, household.meter, community)
+
+
+@router.delete("/{household_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_household(
+    household_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(*ADMIN_ROLES)),
+):
+    """Remove an account and everything recorded against it."""
+    household = db.query(Household).filter(Household.id == household_id).first()
+    if not household:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Household not found")
+    meter_ids = [
+        meter_id
+        for (meter_id,) in db.query(Meter.id).filter(Meter.household_id == household_id).all()
+    ]
+    if meter_ids:
+        db.query(MeterReading).filter(MeterReading.meter_id.in_(meter_ids)).delete(
+            synchronize_session=False
+        )
+    db.query(Payment).filter(Payment.household_id == household_id).delete(
+        synchronize_session=False
+    )
+    db.query(Invoice).filter(Invoice.household_id == household_id).delete(
+        synchronize_session=False
+    )
+    db.query(Meter).filter(Meter.household_id == household_id).delete(synchronize_session=False)
+    db.delete(household)
+    db.commit()
