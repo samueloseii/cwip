@@ -1,11 +1,21 @@
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.api.deps import ADMIN_ROLES, get_current_user, require_role
 from app.core.security import create_access_token, get_password_hash, verify_password
 from app.db.session import get_db
 from app.models.user import User, UserRole
-from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserResponse
+from app.schemas.auth import (
+    AccessRequest,
+    ApprovalRequest,
+    LoginRequest,
+    RegisterRequest,
+    TokenResponse,
+    UserResponse,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -16,6 +26,8 @@ def _user_response(user: User) -> UserResponse:
         email=user.email,
         full_name=user.full_name,
         role=user.role.value,
+        phone=user.phone,
+        is_active=user.is_active,
         partner_id=str(user.partner_id) if user.partner_id else None,
         community_id=str(user.community_id) if user.community_id else None,
     )
@@ -32,10 +44,73 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account is inactive",
+            detail="Your access request is waiting for administrator approval",
         )
     token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
     return TokenResponse(access_token=token)
+
+
+@router.post(
+    "/access-requests", response_model=UserResponse, status_code=status.HTTP_201_CREATED
+)
+def request_access(payload: AccessRequest, db: Session = Depends(get_db)):
+    """Anyone can ask for a login; an administrator decides the role and activates it."""
+    existing = db.query(User).filter(User.email == payload.email.lower()).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account or request already exists for this email",
+        )
+    user = User(
+        email=payload.email.lower(),
+        hashed_password=get_password_hash(payload.password),
+        full_name=payload.full_name,
+        phone=payload.phone,
+        role=payload.requested_role,
+        is_active=False,
+        notes=f"Requested {payload.requested_role.value} access",
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return _user_response(user)
+
+
+@router.post("/users/{user_id}/approve", response_model=UserResponse)
+def approve_user(
+    user_id: uuid.UUID,
+    payload: ApprovalRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(*ADMIN_ROLES)),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    user.role = payload.role
+    user.is_active = True
+    user.community_id = payload.community_id or user.community_id or current_user.community_id
+    user.partner_id = user.partner_id or current_user.partner_id
+    db.commit()
+    db.refresh(user)
+    return _user_response(user)
+
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(
+    user_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(*ADMIN_ROLES)),
+):
+    if user_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot delete your own account",
+        )
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    db.delete(user)
+    db.commit()
 
 
 @router.get("/me", response_model=UserResponse)
@@ -50,9 +125,13 @@ def list_users(
 ):
     query = db.query(User)
     if current_user.role is UserRole.COMMUNITY_ADMIN or current_user.role is UserRole.TREASURER:
-        query = query.filter(User.community_id == current_user.community_id)
+        query = query.filter(
+            or_(User.community_id == current_user.community_id, User.is_active.is_(False))
+        )
     elif current_user.role is UserRole.PARTNER_ADMIN:
-        query = query.filter(User.partner_id == current_user.partner_id)
+        query = query.filter(
+            or_(User.partner_id == current_user.partner_id, User.is_active.is_(False))
+        )
     return [_user_response(user) for user in query.order_by(User.full_name).all()]
 
 

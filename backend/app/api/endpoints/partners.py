@@ -72,3 +72,24 @@ def update_partner(
     db.commit()
     db.refresh(partner)
     return _response(db, partner)
+
+
+@router.delete("/{partner_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_partner(
+    partner_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.SUPER_ADMIN)),
+):
+    partner = db.query(Partner).filter(Partner.id == partner_id).first()
+    if not partner:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found")
+    if db.query(Community).filter(Community.partner_id == partner_id).count():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Delete the communities in this organization first",
+        )
+    db.query(User).filter(User.partner_id == partner_id).update(
+        {User.partner_id: None}, synchronize_session=False
+    )
+    db.delete(partner)
+    db.commit()

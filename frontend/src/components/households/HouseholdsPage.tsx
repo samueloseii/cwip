@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, Home, Plus, Search } from 'lucide-react'
+import { ChevronRight, Home, Plus, Search, Trash2 } from 'lucide-react'
 import api from '../../services/api'
 import { useAuth } from '../../contexts/AuthContext'
 import {
@@ -84,6 +84,21 @@ export default function HouseholdsPage() {
       .then((res) => setCommunities(res.data))
       .catch(() => setCommunities([]))
   }, [])
+
+  async function handleDelete(household: Household) {
+    if (
+      !window.confirm(
+        `Delete ${household.head_of_household} (${household.account_number}) and all its readings, bills and payments?`
+      )
+    )
+      return
+    try {
+      await api.delete(`/households/${household.id}`)
+      load()
+    } catch (err: any) {
+      window.alert(err?.response?.data?.detail ?? 'Could not delete this account.')
+    }
+  }
 
   function openForm() {
     setForm({ ...emptyForm, community_id: user?.community_id || '' })
@@ -206,8 +221,20 @@ export default function HouseholdsPage() {
                         {formatMoney(h.currency, h.outstanding_balance)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <ChevronRight className="h-4 w-4 text-gray-300" />
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-end gap-3">
+                        <button
+                          aria-label={`Delete ${h.account_number}`}
+                          className="text-gray-300 hover:text-red-600"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDelete(h)
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                        <ChevronRight className="h-4 w-4 text-gray-300" />
+                      </div>
                     </td>
                   </tr>
                 ))}

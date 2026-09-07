@@ -100,3 +100,16 @@ def update_maintenance(
     db.commit()
     db.refresh(record)
     return _response(record, record.community)
+
+
+@router.delete("/{record_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_maintenance(
+    record_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(*ADMIN_ROLES)),
+):
+    record = db.query(MaintenanceRecord).filter(MaintenanceRecord.id == record_id).first()
+    if not record:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Record not found")
+    db.delete(record)
+    db.commit()

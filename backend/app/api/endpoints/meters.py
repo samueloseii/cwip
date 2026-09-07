@@ -129,3 +129,29 @@ def list_readings(
     if meter_id:
         query = query.filter(MeterReading.meter_id == meter_id)
     return query.order_by(MeterReading.reading_date.desc()).offset(skip).limit(limit).all()
+
+
+@router.delete("/readings/{reading_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_reading(
+    reading_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(*ADMIN_ROLES)),
+):
+    """Remove a mis-entered reading and roll the meter back to the previous one."""
+    reading = db.query(MeterReading).filter(MeterReading.id == reading_id).first()
+    if not reading:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reading not found")
+    meter_id = reading.meter_id
+    db.delete(reading)
+    db.flush()
+    meter = db.query(Meter).filter(Meter.id == meter_id).first()
+    if meter:
+        latest = (
+            db.query(MeterReading)
+            .filter(MeterReading.meter_id == meter_id)
+            .order_by(MeterReading.reading_date.desc())
+            .first()
+        )
+        meter.last_reading_value = latest.reading_value if latest else 0.0
+        meter.last_reading_date = latest.reading_date if latest else None
+    db.commit()

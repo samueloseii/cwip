@@ -343,3 +343,67 @@ def get_printable_bill(
         previous_reading=previous_reading,
         current_reading=current_reading,
     )
+
+
+def _recalculate_invoice(db: Session, invoice: Invoice) -> None:
+    paid = (
+        db.query(func.coalesce(func.sum(Payment.amount), 0.0))
+        .filter(Payment.invoice_id == invoice.id)
+        .scalar()
+    )
+    invoice.amount_paid = round(float(paid), 2)
+    invoice.balance_due = round(max(0.0, invoice.total_amount - invoice.amount_paid), 2)
+    if invoice.balance_due == 0:
+        invoice.status = InvoiceStatus.PAID
+    elif invoice.amount_paid > 0:
+        invoice.status = InvoiceStatus.PARTIAL
+    else:
+        invoice.status = InvoiceStatus.PENDING
+
+
+@router.delete("/invoices/{invoice_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_invoice(
+    invoice_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(*ADMIN_ROLES)),
+):
+    invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
+    if not invoice:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invoice not found")
+    if db.query(Payment).filter(Payment.invoice_id == invoice_id).count():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Delete the payments on this bill first",
+        )
+    household = db.query(Household).filter(Household.id == invoice.household_id).first()
+    if household:
+        household.outstanding_balance = round(
+            max(0.0, household.outstanding_balance - invoice.balance_due), 2
+        )
+    db.delete(invoice)
+    db.commit()
+
+
+@router.delete("/payments/{payment_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_payment(
+    payment_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(*ADMIN_ROLES)),
+):
+    """Reverse a payment and restore the balances it settled."""
+    payment = db.query(Payment).filter(Payment.id == payment_id).first()
+    if not payment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
+    invoice_id = payment.invoice_id
+    household_id = payment.household_id
+    amount = payment.amount
+    db.delete(payment)
+    db.flush()
+    if invoice_id:
+        invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
+        if invoice:
+            _recalculate_invoice(db, invoice)
+    household = db.query(Household).filter(Household.id == household_id).first()
+    if household:
+        household.outstanding_balance = round(household.outstanding_balance + amount, 2)
+    db.commit()

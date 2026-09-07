@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { MessageCircle, Wrench } from 'lucide-react'
+import { MessageCircle, Trash2, Wrench } from 'lucide-react'
 import api from '../../services/api'
 import {
   Badge,
@@ -59,6 +59,12 @@ export default function MaintenancePage() {
     setRecords((prev) => prev.map((r) => (r.id === id ? res.data : r)))
   }
 
+  async function remove(record: MaintenanceRecord) {
+    if (!window.confirm(`Delete the report "${record.title}"?`)) return
+    await api.delete(`/maintenance/${record.id}`)
+    setRecords((prev) => prev.filter((r) => r.id !== record.id))
+  }
+
   const openCount = records.filter((r) => r.status !== 'completed').length
   const urgentCount = records.filter(
     (r) => r.status !== 'completed' && (r.priority === 'high' || r.priority === 'critical'),
@@ -104,6 +110,7 @@ export default function MaintenancePage() {
                   <th className="px-6 py-3">Reported</th>
                   <th className="px-6 py-3">Priority</th>
                   <th className="px-6 py-3">Status</th>
+                  <th className="px-6 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -161,6 +168,15 @@ export default function MaintenancePage() {
                           resolved {formatDate(r.resolved_date)}
                         </span>
                       )}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        aria-label={`Delete ${r.title}`}
+                        className="text-gray-300 hover:text-red-600"
+                        onClick={() => remove(r)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </td>
                   </tr>
                 ))}

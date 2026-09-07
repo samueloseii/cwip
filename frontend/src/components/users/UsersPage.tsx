@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react'
-import { Plus, Users } from 'lucide-react'
+import { Plus, Trash2, Users } from 'lucide-react'
 import api from '../../services/api'
 import {
   Card,
@@ -18,6 +18,8 @@ interface TeamMember {
   email: string
   full_name: string
   role: string
+  phone: string | null
+  is_active: boolean
   community_id: string | null
 }
 
@@ -59,6 +61,7 @@ export default function UsersPage() {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [approvalRoles, setApprovalRoles] = useState<Record<string, string>>({})
 
   function load() {
     setLoading(true)
@@ -99,6 +102,27 @@ export default function UsersPage() {
   const communityName = (id: string | null) =>
     communities.find((c) => c.id === id)?.name ?? '—'
 
+  const pending = members.filter((m) => !m.is_active)
+  const active = members.filter((m) => m.is_active)
+
+  async function approve(member: TeamMember, role: string) {
+    await api.post(`/auth/users/${member.id}/approve`, {
+      role,
+      community_id: member.community_id || communities[0]?.id || null,
+    })
+    load()
+  }
+
+  async function remove(member: TeamMember, question: string) {
+    if (!window.confirm(question)) return
+    try {
+      await api.delete(`/auth/users/${member.id}`)
+      load()
+    } catch (err: any) {
+      window.alert(err?.response?.data?.detail ?? 'Could not remove this account.')
+    }
+  }
+
   return (
     <div>
       <PageHeader
@@ -119,9 +143,65 @@ export default function UsersPage() {
         }
       />
 
+      {!loading && pending.length > 0 && (
+        <Card className="mb-6 overflow-hidden">
+          <div className="px-5 py-3 border-b border-gray-100">
+            <p className="font-medium text-gray-900">Access requests</p>
+            <p className="text-sm text-gray-500">Approve a person and choose what they can do.</p>
+          </div>
+          <table className="w-full text-sm">
+            <tbody className="divide-y divide-gray-100">
+              {pending.map((m) => (
+                <tr key={m.id}>
+                  <td className="px-5 py-3">
+                    <p className="font-medium text-gray-900">{m.full_name}</p>
+                    <p className="text-gray-500">
+                      {m.email}
+                      {m.phone ? ` · ${m.phone}` : ''}
+                    </p>
+                  </td>
+                  <td className="px-5 py-3 text-gray-600">
+                    Requested: {roleLabels[m.role] ?? m.role}
+                  </td>
+                  <td className="px-5 py-3">
+                    <div className="flex items-center justify-end gap-2">
+                      <select
+                        className={inputClass}
+                        value={approvalRoles[m.id] ?? m.role}
+                        onChange={(e) =>
+                          setApprovalRoles({ ...approvalRoles, [m.id]: e.target.value })
+                        }
+                      >
+                        {roleOptions.map((r) => (
+                          <option key={r.value} value={r.value}>
+                            {r.label}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        className={primaryButtonClass}
+                        onClick={() => approve(m, approvalRoles[m.id] ?? m.role)}
+                      >
+                        Approve
+                      </button>
+                      <button
+                        className={secondaryButtonClass}
+                        onClick={() => remove(m, `Decline the access request from ${m.full_name}?`)}
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
+
       {loading ? (
         <Spinner />
-      ) : members.length === 0 ? (
+      ) : active.length === 0 ? (
         <Card>
           <EmptyState icon={Users} title="No accounts yet" hint="Add your operators and treasurer." />
         </Card>
@@ -134,15 +214,25 @@ export default function UsersPage() {
                 <th className="px-5 py-3 font-medium">Email</th>
                 <th className="px-5 py-3 font-medium">Role</th>
                 <th className="px-5 py-3 font-medium">Community</th>
+                <th className="px-5 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {members.map((m) => (
+              {active.map((m) => (
                 <tr key={m.id}>
                   <td className="px-5 py-3 font-medium text-gray-900">{m.full_name}</td>
                   <td className="px-5 py-3 text-gray-600">{m.email}</td>
                   <td className="px-5 py-3 text-gray-600">{roleLabels[m.role] ?? m.role}</td>
                   <td className="px-5 py-3 text-gray-600">{communityName(m.community_id)}</td>
+                  <td className="px-5 py-3 text-right">
+                    <button
+                      className="text-gray-400 hover:text-red-600"
+                      aria-label={`Remove ${m.full_name}`}
+                      onClick={() => remove(m, `Remove ${m.full_name}'s account?`)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
