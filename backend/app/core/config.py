@@ -36,8 +36,6 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = _default_database_url()
 
-    SEED_ON_STARTUP: bool = _on_persistent_volume()
-
     # JWT
     SECRET_KEY: str = _default_secret_key()
     ALGORITHM: str = "HS256"
