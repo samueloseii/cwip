@@ -7,6 +7,7 @@ import {
   Wallet,
   Wrench,
   BarChart3,
+  UserCog,
   LogOut,
   Droplets,
 } from 'lucide-react'
@@ -20,6 +21,7 @@ const navItems = [
   { to: '/expenses', icon: Wallet, label: 'Expenses' },
   { to: '/maintenance', icon: Wrench, label: 'Maintenance' },
   { to: '/analytics', icon: BarChart3, label: 'Analytics' },
+  { to: '/team', icon: UserCog, label: 'Team' },
 ]
 
 const roleLabels: Record<string, string> = {

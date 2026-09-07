@@ -10,6 +10,7 @@ import BillingPage from './components/billing/BillingPage'
 import ExpensesPage from './components/expenses/ExpensesPage'
 import MaintenancePage from './components/maintenance/MaintenancePage'
 import AnalyticsPage from './components/reports/AnalyticsPage'
+import UsersPage from './components/users/UsersPage'
 import FieldView from './components/field/FieldView'
 import PrintBill from './components/billing/PrintBill'
 import { Spinner } from './components/ui'
@@ -62,6 +63,7 @@ export default function App() {
         <Route path="/expenses" element={<ExpensesPage />} />
         <Route path="/maintenance" element={<MaintenancePage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
+        <Route path="/team" element={<UsersPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

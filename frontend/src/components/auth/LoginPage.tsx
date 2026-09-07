@@ -21,12 +21,6 @@ const highlights = [
   },
 ]
 
-const demoAccounts = [
-  { label: 'System administrator', email: 'admin@flow.app', password: 'admin123' },
-  { label: 'Treasurer', email: 'treasurer1@flow.app', password: 'treasurer123' },
-  { label: 'Operator (field)', email: 'operator1@flow.app', password: 'operator123' },
-]
-
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -156,27 +150,9 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-8 border-t border-gray-200 pt-6">
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-3">
-              Demo accounts
-            </p>
-            <div className="space-y-2">
-              {demoAccounts.map((account) => (
-                <button
-                  key={account.email}
-                  type="button"
-                  onClick={() => {
-                    setEmail(account.email)
-                    setPassword(account.password)
-                  }}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-gray-200 bg-white hover:border-primary-300 hover:bg-primary-50 transition-colors text-left"
-                >
-                  <span className="text-sm font-medium text-gray-700">{account.label}</span>
-                  <span className="text-xs text-gray-400">{account.email}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+          <p className="mt-8 text-xs text-gray-400">
+            Forgotten your password? Ask your system administrator to reset it.
+          </p>
         </div>
       </div>
     </div>

@@ -32,6 +32,15 @@ def _generate_invoice_number(db: Session) -> str:
     return f"INV-{count + 1:06d}"
 
 
+def _apply_to_invoice(invoice: Invoice, amount: float) -> None:
+    invoice.amount_paid = round(invoice.amount_paid + amount, 2)
+    invoice.balance_due = round(max(0.0, invoice.total_amount - invoice.amount_paid), 2)
+    if invoice.balance_due == 0:
+        invoice.status = InvoiceStatus.PAID
+    elif invoice.amount_paid > 0:
+        invoice.status = InvoiceStatus.PARTIAL
+
+
 def _invoice_response(invoice: Invoice, household: Household | None) -> InvoiceResponse:
     response = InvoiceResponse.model_validate(invoice)
     if household:
@@ -233,16 +242,28 @@ def create_payment(
     payment = Payment(**payload.model_dump())
     db.add(payment)
 
-    # Update invoice balance if linked
     if payload.invoice_id:
         invoice = db.query(Invoice).filter(Invoice.id == payload.invoice_id).first()
         if invoice:
-            invoice.amount_paid += payload.amount
-            invoice.balance_due = max(0, invoice.total_amount - invoice.amount_paid)
-            if invoice.balance_due == 0:
-                invoice.status = InvoiceStatus.PAID
-            elif invoice.amount_paid > 0:
-                invoice.status = InvoiceStatus.PARTIAL
+            _apply_to_invoice(invoice, payload.amount)
+    else:
+        # Settle the household's oldest outstanding invoices first.
+        outstanding = (
+            db.query(Invoice)
+            .filter(Invoice.household_id == payload.household_id)
+            .filter(Invoice.status.in_(UNPAID_STATUSES))
+            .order_by(Invoice.billing_period_end)
+            .all()
+        )
+        remaining = payload.amount
+        for invoice in outstanding:
+            if remaining <= 0:
+                break
+            applied = min(remaining, invoice.balance_due)
+            _apply_to_invoice(invoice, applied)
+            remaining -= applied
+            if payment.invoice_id is None:
+                payment.invoice_id = invoice.id
 
     # Update household outstanding balance
     household = db.query(Household).filter(Household.id == payload.household_id).first()

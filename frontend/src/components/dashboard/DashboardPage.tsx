@@ -1,15 +1,7 @@
 import { useEffect, useState } from 'react'
-import {
-  Users,
-  MapPin,
-  Droplets,
-  DollarSign,
-  AlertTriangle,
-  Wrench,
-  TrendingUp,
-  Gauge,
-} from 'lucide-react'
+import { ArrowRight, Check } from 'lucide-react'
 import api from '../../services/api'
+import { Card, PageHeader, Spinner, StatCard, formatMoney } from '../ui'
 
 interface SystemDashboard {
   total_partners: number
@@ -21,115 +13,110 @@ interface SystemDashboard {
   total_arrears: number
 }
 
+interface Community {
+  id: string
+  name: string
+  currency: string
+}
+
+const quickActions = [
+  { href: '/households', label: 'Register a household' },
+  { href: '/billing', label: 'Generate bills' },
+  { href: '/expenses', label: 'Record an expense' },
+  { href: '/maintenance', label: 'Review issue reports' },
+]
+
 export default function DashboardPage() {
   const [data, setData] = useState<SystemDashboard | null>(null)
+  const [communities, setCommunities] = useState<Community[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api.get('/dashboard/system')
-      .then((res) => setData(res.data))
+    Promise.all([api.get('/dashboard/system'), api.get('/communities/')])
+      .then(([dashboardRes, communitiesRes]) => {
+        setData(dashboardRes.data)
+        setCommunities(communitiesRes.data)
+      })
       .catch(() => setData(null))
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
-      </div>
-    )
-  }
+  if (loading) return <Spinner />
 
-  const stats = data
-    ? [
-        { label: 'Communities', value: data.total_communities, icon: MapPin, color: 'text-blue-600 bg-blue-100' },
-        { label: 'Households', value: data.total_households, icon: Users, color: 'text-green-600 bg-green-100' },
-        { label: 'Collection Rate', value: `${data.overall_collection_rate}%`, icon: TrendingUp, color: 'text-purple-600 bg-purple-100' },
-        { label: 'Revenue', value: `$${data.total_revenue.toLocaleString()}`, icon: DollarSign, color: 'text-emerald-600 bg-emerald-100' },
-        { label: 'Arrears', value: `$${data.total_arrears.toLocaleString()}`, icon: AlertTriangle, color: 'text-amber-600 bg-amber-100' },
-        { label: 'Partners', value: data.total_partners, icon: Droplets, color: 'text-cyan-600 bg-cyan-100' },
-        { label: 'Users', value: data.total_users, icon: Gauge, color: 'text-indigo-600 bg-indigo-100' },
-      ]
-    : []
+  const currency = communities[0]?.currency ?? ''
+  const setupSteps = [
+    { label: 'Create your first community and its tariff', href: '/communities', done: (data?.total_communities ?? 0) > 0 },
+    { label: 'Add operators and a treasurer', href: '/team', done: (data?.total_users ?? 0) > 1 },
+    { label: 'Register households and their meters', href: '/households', done: (data?.total_households ?? 0) > 0 },
+  ]
+  const setupComplete = setupSteps.every((s) => s.done)
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500 mt-1">Overview of your community water systems</p>
-      </div>
+      <PageHeader title="Dashboard" subtitle="Current state of the water systems you manage" />
 
-      {data ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat) => (
-            <div key={stat.label} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">{stat.label}</p>
-                  <p className="text-2xl font-bold mt-1">{stat.value}</p>
-                </div>
-                <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${stat.color}`}>
-                  <stat.icon className="h-6 w-6" />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
-          <Wrench className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <h2 className="text-lg font-medium text-gray-700">No Data Available</h2>
-          <p className="text-gray-500 mt-2">Run the database seed script to populate demo data.</p>
-          <code className="block bg-gray-100 rounded-lg p-3 mt-4 text-sm text-gray-600">
-            cd backend && python -m app.db.seed
-          </code>
+      {!setupComplete && (
+        <Card className="p-5 mb-6">
+          <h2 className="text-sm font-semibold text-gray-900">Get set up</h2>
+          <p className="text-xs text-gray-500 mt-0.5">Three steps before readings and billing can start.</p>
+          <ol className="mt-4 space-y-2">
+            {setupSteps.map((step) => (
+              <li key={step.href}>
+                <a
+                  href={step.href}
+                  className={`flex items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm transition-colors ${
+                    step.done
+                      ? 'border-gray-100 bg-gray-50 text-gray-500'
+                      : 'border-gray-200 text-gray-800 hover:border-primary-300 hover:bg-primary-50'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    {step.done && <Check className="h-4 w-4 text-emerald-600" />}
+                    {step.label}
+                  </span>
+                  {!step.done && <ArrowRight className="h-4 w-4 text-gray-400" />}
+                </a>
+              </li>
+            ))}
+          </ol>
+        </Card>
+      )}
+
+      {data && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard label="Communities" value={data.total_communities} />
+          <StatCard label="Households" value={data.total_households} />
+          <StatCard
+            label="Collection rate"
+            value={`${data.overall_collection_rate}%`}
+            tone={data.overall_collection_rate >= 80 ? 'positive' : 'warning'}
+          />
+          <StatCard label="Collected" value={formatMoney(currency, data.total_revenue)} />
+          <StatCard
+            label="Outstanding"
+            value={formatMoney(currency, data.total_arrears)}
+            tone={data.total_arrears > 0 ? 'danger' : 'default'}
+          />
+          <StatCard label="Organizations" value={data.total_partners} />
+          <StatCard label="Accounts" value={data.total_users} />
         </div>
       )}
 
-      <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-          <div className="space-y-3">
-            <a href="/households" className="block px-4 py-3 bg-primary-50 rounded-lg text-primary-700 hover:bg-primary-100 transition-colors">
-              Register a household
+      <Card className="mt-6 p-5">
+        <h2 className="text-sm font-semibold text-gray-900 mb-3">Common tasks</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {quickActions.map((action) => (
+            <a
+              key={action.href}
+              href={action.href}
+              className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-700 hover:border-primary-300 hover:bg-primary-50 transition-colors"
+            >
+              {action.label}
+              <ArrowRight className="h-4 w-4 text-gray-400" />
             </a>
-            <a href="/billing" className="block px-4 py-3 bg-primary-50 rounded-lg text-primary-700 hover:bg-primary-100 transition-colors">
-              Generate bills
-            </a>
-            <a href="/expenses" className="block px-4 py-3 bg-primary-50 rounded-lg text-primary-700 hover:bg-primary-100 transition-colors">
-              Record an expense
-            </a>
-            <a href="/maintenance" className="block px-4 py-3 bg-primary-50 rounded-lg text-primary-700 hover:bg-primary-100 transition-colors">
-              Review maintenance reports
-            </a>
-            <a href="/analytics" className="block px-4 py-3 bg-primary-50 rounded-lg text-primary-700 hover:bg-primary-100 transition-colors">
-              View analytics
-            </a>
-          </div>
+          ))}
         </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h3 className="text-lg font-semibold mb-4">Platform Info</h3>
-          <div className="space-y-3 text-sm text-gray-600">
-            <div className="flex justify-between py-2 border-b border-gray-50">
-              <span>Version</span>
-              <span className="font-medium">0.1.0 (Pilot MVP)</span>
-            </div>
-            <div className="flex justify-between py-2 border-b border-gray-50">
-              <span>Countries</span>
-              <span className="font-medium">Nicaragua, Ecuador, Honduras</span>
-            </div>
-            <div className="flex justify-between py-2 border-b border-gray-50">
-              <span>Partners</span>
-              <span className="font-medium">FEDICAMP, ALTROPICO, AVODEC, ASOMAINCUPACO</span>
-            </div>
-            <div className="flex justify-between py-2">
-              <span>Target Communities</span>
-              <span className="font-medium">12</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      </Card>
     </div>
   )
 }
