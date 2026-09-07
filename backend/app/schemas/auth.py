@@ -37,16 +37,10 @@ class RegisterRequest(BaseModel):
     community_id: uuid.UUID | None = None
 
 
-class AccessRequest(BaseModel):
-    """Someone asking an administrator for a login."""
-
-    email: EmailStr
-    password: str
-    full_name: str
-    phone: str | None = None
-    requested_role: UserRole = UserRole.OPERATOR
+class PasswordReset(BaseModel):
+    new_password: str
 
 
-class ApprovalRequest(BaseModel):
-    role: UserRole
-    community_id: uuid.UUID | None = None
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str

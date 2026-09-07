@@ -9,9 +9,9 @@ from app.core.security import create_access_token, get_password_hash, verify_pas
 from app.db.session import get_db
 from app.models.user import User, UserRole
 from app.schemas.auth import (
-    AccessRequest,
-    ApprovalRequest,
     LoginRequest,
+    PasswordChange,
+    PasswordReset,
     RegisterRequest,
     TokenResponse,
     UserResponse,
@@ -44,55 +44,49 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Your access request is waiting for administrator approval",
+            detail="This account is disabled. Ask your administrator to restore it.",
         )
     token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
     return TokenResponse(access_token=token)
 
 
-@router.post(
-    "/access-requests", response_model=UserResponse, status_code=status.HTTP_201_CREATED
-)
-def request_access(payload: AccessRequest, db: Session = Depends(get_db)):
-    """Anyone can ask for a login; an administrator decides the role and activates it."""
-    existing = db.query(User).filter(User.email == payload.email.lower()).first()
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="An account or request already exists for this email",
-        )
-    user = User(
-        email=payload.email.lower(),
-        hashed_password=get_password_hash(payload.password),
-        full_name=payload.full_name,
-        phone=payload.phone,
-        role=payload.requested_role,
-        is_active=False,
-        notes=f"Requested {payload.requested_role.value} access",
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return _user_response(user)
-
-
-@router.post("/users/{user_id}/approve", response_model=UserResponse)
-def approve_user(
+@router.post("/users/{user_id}/password", status_code=status.HTTP_204_NO_CONTENT)
+def reset_password(
     user_id: uuid.UUID,
-    payload: ApprovalRequest,
+    payload: PasswordReset,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(*ADMIN_ROLES)),
+    _: User = Depends(require_role(*ADMIN_ROLES)),
 ):
+    """An administrator sets a new password for someone who lost theirs."""
+    if len(payload.new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 8 characters",
+        )
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    user.role = payload.role
-    user.is_active = True
-    user.community_id = payload.community_id or user.community_id or current_user.community_id
-    user.partner_id = user.partner_id or current_user.partner_id
+    user.hashed_password = get_password_hash(payload.new_password)
     db.commit()
-    db.refresh(user)
-    return _user_response(user)
+
+
+@router.post("/me/password", status_code=status.HTTP_204_NO_CONTENT)
+def change_own_password(
+    payload: PasswordChange,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not verify_password(payload.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect"
+        )
+    if len(payload.new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 8 characters",
+        )
+    current_user.hashed_password = get_password_hash(payload.new_password)
+    db.commit()
 
 
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)

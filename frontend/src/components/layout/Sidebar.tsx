@@ -1,3 +1,4 @@
+import { FormEvent, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -9,9 +10,12 @@ import {
   BarChart3,
   UserCog,
   LogOut,
+  KeyRound,
   Droplets,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import api from '../../services/api'
+import { Field, Modal, inputClass, primaryButtonClass, secondaryButtonClass } from '../ui'
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -33,6 +37,30 @@ const roleLabels: Record<string, string> = {
 
 export default function Sidebar() {
   const { logout, user } = useAuth()
+  const [showPasswordForm, setShowPasswordForm] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [passwordError, setPasswordError] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function changePassword(e: FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    setPasswordError('')
+    try {
+      await api.post('/auth/me/password', {
+        current_password: currentPassword,
+        new_password: newPassword,
+      })
+      setShowPasswordForm(false)
+      setCurrentPassword('')
+      setNewPassword('')
+    } catch (err: any) {
+      setPasswordError(err?.response?.data?.detail ?? 'Could not change the password.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-primary-900 text-white flex flex-col print:hidden">
@@ -72,6 +100,16 @@ export default function Sidebar() {
           </div>
         )}
         <button
+          onClick={() => {
+            setPasswordError('')
+            setShowPasswordForm(true)
+          }}
+          className="flex items-center gap-3 px-2 py-2 text-sm text-primary-300 hover:text-white transition-colors w-full"
+        >
+          <KeyRound className="h-5 w-5" />
+          Change password
+        </button>
+        <button
           onClick={logout}
           className="flex items-center gap-3 px-2 py-2 text-sm text-primary-300 hover:text-white transition-colors w-full"
         >
@@ -79,6 +117,49 @@ export default function Sidebar() {
           Sign Out
         </button>
       </div>
+
+      {showPasswordForm && (
+        <Modal title="Change password" onClose={() => setShowPasswordForm(false)}>
+          <form onSubmit={changePassword} className="space-y-4">
+            {passwordError && (
+              <p className="bg-red-50 border border-red-200 text-red-600 rounded-lg px-3 py-2 text-sm">
+                {passwordError}
+              </p>
+            )}
+            <Field label="Current password">
+              <input
+                type="password"
+                className={inputClass}
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                required
+              />
+            </Field>
+            <Field label="New password" hint="At least 8 characters">
+              <input
+                type="password"
+                minLength={8}
+                className={inputClass}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+              />
+            </Field>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                className={secondaryButtonClass}
+                onClick={() => setShowPasswordForm(false)}
+              >
+                Cancel
+              </button>
+              <button type="submit" className={primaryButtonClass} disabled={saving}>
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </aside>
   )
 }
