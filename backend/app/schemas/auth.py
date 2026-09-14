@@ -37,6 +37,14 @@ class RegisterRequest(BaseModel):
     community_id: uuid.UUID | None = None
 
 
+class UserUpdate(BaseModel):
+    full_name: str | None = None
+    phone: str | None = None
+    role: UserRole | None = None
+    community_id: uuid.UUID | None = None
+    clear_community: bool = False
+
+
 class PasswordReset(BaseModel):
     new_password: str
 

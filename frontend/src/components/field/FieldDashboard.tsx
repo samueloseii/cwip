@@ -44,7 +44,11 @@ export default function FieldDashboard({ onNavigate }: Props) {
   }, [])
 
   useEffect(() => {
-    if (!user?.community_id) return
+    if (!user) return
+    if (!user.community_id) {
+      setLoading(false)
+      return
+    }
     Promise.all([
       api.get(`/communities/${user.community_id}`),
       api.get(`/households/?community_id=${user.community_id}`),
@@ -65,6 +69,18 @@ export default function FieldDashboard({ onNavigate }: Props) {
     )
   }
 
+  if (!user?.community_id) {
+    return (
+      <div className="max-w-lg mx-auto bg-white rounded-xl border border-gray-100 p-6">
+        <h1 className="text-lg font-semibold text-gray-900">No community assigned</h1>
+        <p className="mt-2 text-sm text-gray-600">
+          Your account is not linked to a community yet, so there are no households to read. Ask
+          your administrator to open Team, edit your account and choose your community.
+        </p>
+      </div>
+    )
+  }
+
   const activeCount = households.filter((h) => h.status === 'active').length
 
   return (
@@ -72,7 +88,7 @@ export default function FieldDashboard({ onNavigate }: Props) {
       {/* Connection status */}
       <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm mb-4 ${online ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
         {online ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
-        {online ? 'Online — data syncs automatically' : 'Offline — data saved locally, will sync when online'}
+        {online ? 'Online' : 'Offline — readings are saved on this phone and sent when you are back online'}
       </div>
 
       {/* Community header */}

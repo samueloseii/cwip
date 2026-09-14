@@ -15,6 +15,7 @@ from app.schemas.auth import (
     RegisterRequest,
     TokenResponse,
     UserResponse,
+    UserUpdate,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -87,6 +88,37 @@ def change_own_password(
         )
     current_user.hashed_password = get_password_hash(payload.new_password)
     db.commit()
+
+
+@router.patch("/users/{user_id}", response_model=UserResponse)
+def update_user(
+    user_id: uuid.UUID,
+    payload: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(*ADMIN_ROLES)),
+):
+    """An administrator corrects someone's details, role or community."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if payload.role is not None and user.id == current_user.id and payload.role != user.role:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot change your own role",
+        )
+    if payload.full_name is not None:
+        user.full_name = payload.full_name
+    if payload.phone is not None:
+        user.phone = payload.phone
+    if payload.role is not None:
+        user.role = payload.role
+    if payload.clear_community:
+        user.community_id = None
+    elif payload.community_id is not None:
+        user.community_id = payload.community_id
+    db.commit()
+    db.refresh(user)
+    return _user_response(user)
 
 
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
