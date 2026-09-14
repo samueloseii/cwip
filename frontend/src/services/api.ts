@@ -22,7 +22,14 @@ api.interceptors.request.use((config) => {
 })
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // A misrouted request can return the HTML app shell with a 200; treat that
+    // as a failure rather than handing markup to code expecting JSON.
+    if (typeof response.data === 'string' && response.data.trimStart().startsWith('<')) {
+      return Promise.reject(new Error('Unexpected response from the server'))
+    }
+    return response
+  },
   async (error) => {
     const config = error.config
     if (error.response?.status === 401 && !config?.url?.includes('/auth/login')) {
