@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BarChart3 } from 'lucide-react'
+import { BarChart3, Download } from 'lucide-react'
 import {
   Area,
   AreaChart,
@@ -38,6 +38,12 @@ interface MonthlyPoint {
   billed: number
   collected: number
   expenses: number
+  net: number
+  cash_position: number
+  households_read: number
+  reading_coverage: number
+  issues_reported: number
+  issues_resolved: number
 }
 
 interface Overview {
@@ -63,6 +69,49 @@ interface Overview {
     consumption_m3: number
   }[]
   invoice_status: { status: string; count: number; amount: number }[]
+  expense_categories: { category: string; amount: number; count: number }[]
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  maintenance: 'Maintenance',
+  administrative: 'Administrative',
+  other: 'Other',
+}
+
+function downloadMonthlyCsv(months: MonthlyPoint[], currency: string) {
+  const header = [
+    'Month',
+    `Consumption (m3)`,
+    `Billed (${currency})`,
+    `Collected (${currency})`,
+    `Expenses (${currency})`,
+    `Net (${currency})`,
+    `Cash position (${currency})`,
+    'Households read',
+    'Reading coverage (%)',
+    'Issues reported',
+    'Issues resolved',
+  ]
+  const rows = months.map((m) => [
+    m.label,
+    m.consumption_m3,
+    m.billed,
+    m.collected,
+    m.expenses,
+    m.net,
+    m.cash_position,
+    m.households_read,
+    m.reading_coverage,
+    m.issues_reported,
+    m.issues_resolved,
+  ])
+  const csv = [header, ...rows].map((row) => row.join(',')).join('\n')
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `flow-analytics-${new Date().toISOString().slice(0, 10)}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
 }
 
 const AGING_COLORS = ['#0ea5e9', '#38bdf8', '#fbbf24', '#f97316', '#ef4444']
@@ -124,6 +173,13 @@ export default function AnalyticsPage() {
   const currency = data?.currency ?? ''
   const hasFinancials = !!data && data.months.some((m) => m.billed || m.collected || m.expenses)
   const hasConsumption = !!data && data.months.some((m) => m.consumption_m3 > 0)
+  const hasReadings = !!data && data.months.some((m) => m.households_read > 0)
+  const hasIssues = !!data && data.months.some((m) => m.issues_reported || m.issues_resolved)
+  const expenseMix =
+    data?.expense_categories.map((c) => ({
+      ...c,
+      label: CATEGORY_LABELS[c.category] ?? c.category,
+    })) ?? []
 
   return (
     <div>
@@ -152,6 +208,16 @@ export default function AnalyticsPage() {
               <option value={12}>Last 12 months</option>
               <option value={24}>Last 24 months</option>
             </select>
+            {data && (
+              <button
+                type="button"
+                onClick={() => downloadMonthlyCsv(data.months, data.currency)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                <Download className="h-4 w-4" />
+                Export CSV
+              </button>
+            )}
           </>
         }
       />
@@ -285,6 +351,114 @@ export default function AnalyticsPage() {
                 </ResponsiveContainer>
               ) : (
                 <EmptyState icon={BarChart3} title="Nothing outstanding" />
+              )}
+            </ChartCard>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <ChartCard
+              title="Cash position"
+              subtitle="Running balance of money collected less money spent"
+            >
+              {hasFinancials ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={data.months} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                    <XAxis dataKey="label" {...axisProps} />
+                    <YAxis {...axisProps} />
+                    <Tooltip formatter={(v: number) => formatMoney(currency, v)} />
+                    <Area
+                      type="monotone"
+                      dataKey="cash_position"
+                      name="Cash position"
+                      stroke="#059669"
+                      fill="#d1fae5"
+                      strokeWidth={2}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <EmptyState icon={BarChart3} title="No payments or expenses recorded yet" />
+              )}
+            </ChartCard>
+
+            <ChartCard title="Where the money goes" subtitle="Spending by expense category">
+              {expenseMix.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={expenseMix}
+                    layout="vertical"
+                    margin={{ top: 5, right: 16, left: 24, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" horizontal={false} />
+                    <XAxis type="number" {...axisProps} />
+                    <YAxis type="category" dataKey="label" width={100} {...axisProps} />
+                    <Tooltip formatter={(v: number) => formatMoney(currency, v)} />
+                    <Bar dataKey="amount" name="Spent" radius={[0, 4, 4, 0]}>
+                      {expenseMix.map((_, index) => (
+                        <Cell key={index} fill={AGING_COLORS[index % AGING_COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <EmptyState icon={BarChart3} title="No expenses recorded yet" />
+              )}
+            </ChartCard>
+
+            <ChartCard
+              title="Reading coverage"
+              subtitle="Share of metered households read each month"
+            >
+              {hasReadings ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={data.months} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                    <XAxis dataKey="label" {...axisProps} />
+                    <YAxis domain={[0, 100]} unit="%" {...axisProps} />
+                    <Tooltip
+                      formatter={(v: number, _name, item) =>
+                        `${v}% (${item.payload.households_read} households)`
+                      }
+                    />
+                    <Bar
+                      dataKey="reading_coverage"
+                      name="Coverage"
+                      fill="#0284c7"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <EmptyState icon={BarChart3} title="No readings recorded yet" />
+              )}
+            </ChartCard>
+
+            <ChartCard title="Faults reported and resolved" subtitle="Is the backlog growing?">
+              {hasIssues ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={data.months} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                    <XAxis dataKey="label" {...axisProps} />
+                    <YAxis allowDecimals={false} {...axisProps} />
+                    <Tooltip />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Bar
+                      dataKey="issues_reported"
+                      name="Reported"
+                      fill="#f97316"
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Bar
+                      dataKey="issues_resolved"
+                      name="Resolved"
+                      fill="#059669"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <EmptyState icon={BarChart3} title="No issues reported yet" />
               )}
             </ChartCard>
           </div>
