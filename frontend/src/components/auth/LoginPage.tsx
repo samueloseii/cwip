@@ -1,7 +1,8 @@
-import { useState, FormEvent } from 'react'
+import { useState, useEffect, useRef, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Droplets, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import api from '../../services/api'
 
 const inputClass =
   'w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none'
@@ -12,21 +13,35 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [waking, setWaking] = useState(false)
+  const wakeTimer = useRef<number>()
   const { login } = useAuth()
   const navigate = useNavigate()
+
+  // The API host suspends an idle instance, so reach it while the person is
+  // still typing rather than making them wait after they press Sign in.
+  useEffect(() => {
+    api.get('/health').catch(() => {})
+  }, [])
 
   async function handleSignIn(e: FormEvent) {
     e.preventDefault()
     setError('')
     setLoading(true)
+    wakeTimer.current = window.setTimeout(() => setWaking(true), 4000)
     try {
       await login(email, password)
       navigate('/')
     } catch (err: any) {
       setError(
-        err?.response?.data?.detail ?? 'That email and password combination was not recognised.'
+        err?.response?.data?.detail ??
+          (err?.response
+            ? 'That email and password combination was not recognised.'
+            : 'Could not reach Flow. Check your connection and try again.')
       )
     } finally {
+      window.clearTimeout(wakeTimer.current)
+      setWaking(false)
       setLoading(false)
     }
   }
@@ -83,6 +98,11 @@ export default function LoginPage() {
           >
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
+          {waking && (
+            <p className="text-xs text-gray-500 text-center">
+              Starting the server — this can take up to a minute after a quiet period.
+            </p>
+          )}
         </form>
       </div>
     </div>

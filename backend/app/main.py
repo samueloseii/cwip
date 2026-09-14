@@ -51,6 +51,7 @@ def on_startup():
 
 
 @app.get("/health")
+@app.get(f"{settings.API_V1_STR}/health")
 def health_check():
     return {"status": "healthy", "version": settings.VERSION}
 

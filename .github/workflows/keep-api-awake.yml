@@ -1,0 +1,15 @@
+name: Keep API awake
+
+# The API host suspends an idle instance, which makes the next sign-in wait for
+# a cold start. A regular request keeps it serving.
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping health endpoint
+        run: curl --fail --silent --show-error --max-time 120 https://flow-nstl.onrender.com/health
