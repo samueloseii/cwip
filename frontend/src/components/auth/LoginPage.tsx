@@ -84,9 +84,6 @@ export default function LoginPage() {
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
-        <p className="mt-6 text-sm text-gray-500">
-          Accounts are created by your administrator inside Flow.
-        </p>
       </div>
     </div>
   )
