@@ -23,6 +23,7 @@ from app.schemas.analytics import (
     AgingBucket,
     AnalyticsOverview,
     AnalyticsTotals,
+    CategorySlice,
     MonthlyPoint,
     StatusSlice,
     TopConsumer,
@@ -64,9 +65,23 @@ def overview(
         cursor = (cursor - timedelta(days=1)).replace(day=1)
     window.reverse()
     buckets = {
-        key: MonthlyPoint(month=key, label=label, consumption_m3=0.0, billed=0.0, collected=0.0, expenses=0.0)
+        key: MonthlyPoint(
+            month=key,
+            label=label,
+            consumption_m3=0.0,
+            billed=0.0,
+            collected=0.0,
+            expenses=0.0,
+            net=0.0,
+            cash_position=0.0,
+            households_read=0,
+            reading_coverage=0.0,
+            issues_reported=0,
+            issues_resolved=0,
+        )
         for key, label in window
     }
+    read_households: dict[str, set[uuid.UUID]] = {key: set() for key, _ in window}
     earliest = datetime.strptime(window[0][0], "%Y-%m").replace(tzinfo=timezone.utc)
 
     households = db.query(Household).filter(Household.community_id == community_id).all()
@@ -95,6 +110,8 @@ def overview(
             if key in buckets:
                 buckets[key].consumption_m3 += reading.consumption_m3 or 0.0
             hh_id = meter_to_household[reading.meter_id]
+            if key in read_households:
+                read_households[key].add(hh_id)
             consumption_by_household[hh_id] = (
                 consumption_by_household.get(hh_id, 0.0) + (reading.consumption_m3 or 0.0)
             )
@@ -125,12 +142,32 @@ def overview(
         if key in buckets:
             buckets[key].expenses += expense.amount
 
+    maintenance_records = (
+        db.query(MaintenanceRecord).filter(MaintenanceRecord.community_id == community_id).all()
+    )
+    for record in maintenance_records:
+        reported_key = _month_key(_as_utc(record.reported_date))
+        if reported_key in buckets:
+            buckets[reported_key].issues_reported += 1
+        if record.resolved_date:
+            resolved_key = _month_key(_as_utc(record.resolved_date))
+            if resolved_key in buckets:
+                buckets[resolved_key].issues_resolved += 1
+
     series = [buckets[key] for key, _ in window]
+    running_cash = 0.0
     for point in series:
         point.consumption_m3 = round(point.consumption_m3, 1)
         point.billed = round(point.billed, 2)
         point.collected = round(point.collected, 2)
         point.expenses = round(point.expenses, 2)
+        point.net = round(point.collected - point.expenses, 2)
+        running_cash += point.net
+        point.cash_position = round(running_cash, 2)
+        point.households_read = len(read_households[point.month])
+        point.reading_coverage = (
+            round(point.households_read / len(meters) * 100, 1) if meters else 0.0
+        )
 
     total_billed = sum(i.total_amount for i in invoices)
     total_collected = sum(p.amount for p in payments)
@@ -148,6 +185,12 @@ def overview(
                 aging[name][0] += invoice.balance_due
                 aging[name][1] += 1
                 break
+
+    expense_totals: dict[str, list[float]] = {}
+    for expense in expenses:
+        entry = expense_totals.setdefault(expense.category.value, [0.0, 0.0])
+        entry[0] += expense.amount
+        entry[1] += 1
 
     status_totals: dict[str, list[float]] = {}
     for invoice in invoices:
@@ -198,6 +241,10 @@ def overview(
         invoice_status=[
             StatusSlice(status=name, count=int(counts[0]), amount=round(counts[1], 2))
             for name, counts in sorted(status_totals.items())
+        ],
+        expense_categories=[
+            CategorySlice(category=name, amount=round(totals[0], 2), count=int(totals[1]))
+            for name, totals in sorted(expense_totals.items(), key=lambda item: -item[1][0])
         ],
     )
 

@@ -10,6 +10,12 @@ class MonthlyPoint(BaseModel):
     billed: float
     collected: float
     expenses: float
+    net: float
+    cash_position: float
+    households_read: int
+    reading_coverage: float
+    issues_reported: int
+    issues_resolved: int
 
 
 class AnalyticsTotals(BaseModel):
@@ -38,6 +44,12 @@ class TopConsumer(BaseModel):
     consumption_m3: float
 
 
+class CategorySlice(BaseModel):
+    category: str
+    amount: float
+    count: int
+
+
 class StatusSlice(BaseModel):
     status: str
     count: int
@@ -51,3 +63,4 @@ class AnalyticsOverview(BaseModel):
     aging: list[AgingBucket]
     top_consumers: list[TopConsumer]
     invoice_status: list[StatusSlice]
+    expense_categories: list[CategorySlice]
