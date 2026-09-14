@@ -176,7 +176,7 @@ export default function AnalyticsPage() {
   const hasReadings = !!data && data.months.some((m) => m.households_read > 0)
   const hasIssues = !!data && data.months.some((m) => m.issues_reported || m.issues_resolved)
   const expenseMix =
-    data?.expense_categories.map((c) => ({
+    data?.expense_categories?.map((c) => ({
       ...c,
       label: CATEGORY_LABELS[c.category] ?? c.category,
     })) ?? []
