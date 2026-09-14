@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react'
-import { KeyRound, Plus, Trash2, Users } from 'lucide-react'
+import { KeyRound, Pencil, Plus, Trash2, Users } from 'lucide-react'
 import api from '../../services/api'
 import {
   Card,
@@ -61,6 +61,8 @@ export default function UsersPage() {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [editing, setEditing] = useState<TeamMember | null>(null)
+  const [editForm, setEditForm] = useState({ full_name: '', phone: '', role: '', community_id: '' })
 
   function load() {
     setLoading(true)
@@ -93,6 +95,28 @@ export default function UsersPage() {
       load()
     } catch (err: any) {
       setError(err?.response?.data?.detail ?? 'Could not create the account.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleEditSubmit(e: FormEvent) {
+    e.preventDefault()
+    if (!editing) return
+    setSaving(true)
+    setError('')
+    try {
+      await api.patch(`/auth/users/${editing.id}`, {
+        full_name: editForm.full_name,
+        phone: editForm.phone || null,
+        role: editForm.role,
+        community_id: editForm.community_id || null,
+        clear_community: !editForm.community_id,
+      })
+      setEditing(null)
+      load()
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? 'Could not save the changes.')
     } finally {
       setSaving(false)
     }
@@ -173,6 +197,22 @@ export default function UsersPage() {
                     <div className="flex items-center justify-end gap-3">
                       <button
                         className="text-gray-400 hover:text-primary-600"
+                        aria-label={`Edit ${m.full_name}`}
+                        onClick={() => {
+                          setEditForm({
+                            full_name: m.full_name,
+                            phone: m.phone ?? '',
+                            role: m.role,
+                            community_id: m.community_id ?? '',
+                          })
+                          setError('')
+                          setEditing(m)
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        className="text-gray-400 hover:text-primary-600"
                         aria-label={`Change ${m.full_name}'s password`}
                         onClick={() => resetPassword(m)}
                       >
@@ -192,6 +232,74 @@ export default function UsersPage() {
             </tbody>
           </table>
         </Card>
+      )}
+
+      {editing && (
+        <Modal
+          title={`Edit ${editing.full_name}`}
+          description="Change what this person is allowed to do, or which community they work in."
+          onClose={() => setEditing(null)}
+        >
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            {error && (
+              <p className="bg-red-50 border border-red-200 text-red-600 rounded-lg px-3 py-2 text-sm">
+                {error}
+              </p>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Full name">
+                <input
+                  className={inputClass}
+                  value={editForm.full_name}
+                  onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
+                  required
+                />
+              </Field>
+              <Field label="Phone">
+                <input
+                  className={inputClass}
+                  value={editForm.phone}
+                  onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                />
+              </Field>
+              <Field label="Role" className="sm:col-span-2">
+                <select
+                  className={inputClass}
+                  value={editForm.role}
+                  onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                >
+                  {roleOptions.map((r) => (
+                    <option key={r.value} value={r.value}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Community" className="sm:col-span-2">
+                <select
+                  className={inputClass}
+                  value={editForm.community_id}
+                  onChange={(e) => setEditForm({ ...editForm, community_id: e.target.value })}
+                >
+                  <option value="">All communities</option>
+                  {communities.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button type="button" className={secondaryButtonClass} onClick={() => setEditing(null)}>
+                Cancel
+              </button>
+              <button type="submit" className={primaryButtonClass} disabled={saving}>
+                {saving ? 'Saving…' : 'Save changes'}
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
 
       {showForm && (
