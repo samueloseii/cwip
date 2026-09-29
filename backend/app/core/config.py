@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     SECRET_KEY: str = _default_secret_key()
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+    # Field devices go weeks between visits to a signal; a short token would strand
+    # readings on the phone.
+    FIELD_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 30  # 30 days
 
     # AI / OpenAI
     OPENAI_API_KEY: str = ""

@@ -16,6 +16,9 @@ STATEMENTS = (
     "ALTER TABLE meter_readings ADD COLUMN IF NOT EXISTS flag_reason VARCHAR(255)",
     "ALTER TABLE maintenance_records "
     "ADD COLUMN IF NOT EXISTS reported_via_whatsapp BOOLEAN DEFAULT FALSE",
+    "ALTER TABLE meter_readings ADD COLUMN IF NOT EXISTS client_id VARCHAR(64)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS ix_meter_readings_client_id "
+    "ON meter_readings (client_id)",
 )
 
 
@@ -23,6 +26,9 @@ SQLITE_STATEMENTS = (
     "ALTER TABLE meters ADD COLUMN avg_consumption_m3 FLOAT DEFAULT 0",
     "ALTER TABLE meter_readings ADD COLUMN flag_reason VARCHAR(255)",
     "ALTER TABLE maintenance_records ADD COLUMN reported_via_whatsapp BOOLEAN DEFAULT 0",
+    "ALTER TABLE meter_readings ADD COLUMN client_id VARCHAR(64)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS ix_meter_readings_client_id "
+    "ON meter_readings (client_id)",
 )
 
 
