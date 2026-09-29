@@ -11,7 +11,7 @@ from app.api.deps import ADMIN_ROLES, READING_ROLES, require_role
 from app.db.session import get_db
 from app.models.billing import Invoice, InvoiceStatus, Payment, PaymentMethod
 from app.models.household import Household
-from app.models.meter import Meter
+from app.models.meter import Meter, MeterReading
 from app.models.user import User
 from app.services.readings import record_reading
 
@@ -48,6 +48,7 @@ class SyncResultItem(BaseModel):
     client_id: str
     server_id: str | None = None
     success: bool
+    duplicate: bool = False
     error: str | None = None
 
 
@@ -68,6 +69,20 @@ def push_offline_data(
 
     for r in payload.readings:
         try:
+            # A device that never saw our response retries the same reading. Return the
+            # reading it already created instead of recording the consumption twice.
+            existing = (
+                db.query(MeterReading).filter(MeterReading.client_id == r.client_id).first()
+            )
+            if existing:
+                reading_results.append(SyncResultItem(
+                    client_id=r.client_id,
+                    server_id=str(existing.id),
+                    success=True,
+                    duplicate=True,
+                ))
+                continue
+
             meter = db.query(Meter).filter(Meter.id == r.meter_id).first()
             if not meter:
                 reading_results.append(SyncResultItem(client_id=r.client_id, success=False, error="Meter not found"))
@@ -80,6 +95,7 @@ def push_offline_data(
                 reading_date=r.reading_date,
                 notes=r.notes,
                 recorded_by=r.recorded_by or current_user.full_name,
+                client_id=r.client_id,
             )
 
             reading_results.append(SyncResultItem(

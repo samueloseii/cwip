@@ -67,6 +67,12 @@ class MeterReading(Base):
     recorded_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
     flag_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
+    # Identifier minted by the device that captured the reading offline. A repeated
+    # upload of the same identifier returns the original reading instead of a duplicate.
+    client_id: Mapped[str | None] = mapped_column(
+        String(64), unique=True, index=True, nullable=True
+    )
+
     meter_id: Mapped[uuid.UUID] = mapped_column(
         GUID(), ForeignKey("meters.id")
     )

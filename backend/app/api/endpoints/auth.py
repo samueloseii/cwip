@@ -1,10 +1,12 @@
 import uuid
+from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.api.deps import ADMIN_ROLES, get_current_user, require_role
+from app.api.deps import ADMIN_ROLES, FIELD_ROLES, get_current_user, require_role
+from app.core.config import settings
 from app.core.security import create_access_token, get_password_hash, verify_password
 from app.db.session import get_db
 from app.models.user import User, UserRole
@@ -47,7 +49,14 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This account is disabled. Ask your administrator to restore it.",
         )
-    token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
+    expires = (
+        timedelta(minutes=settings.FIELD_TOKEN_EXPIRE_MINUTES)
+        if user.role in FIELD_ROLES
+        else None
+    )
+    token = create_access_token(
+        data={"sub": str(user.id), "role": user.role.value}, expires_delta=expires
+    )
     return TokenResponse(access_token=token)
 
 

@@ -59,6 +59,7 @@ def record_reading(
     is_estimated: bool = False,
     recorded_by: str | None = None,
     photo_url: str | None = None,
+    client_id: str | None = None,
 ) -> MeterReading:
     """Persist a reading, flagging anomalies and refreshing meter aggregates."""
     previous_value = meter.last_reading_value
@@ -75,6 +76,7 @@ def record_reading(
         is_estimated=is_estimated,
         recorded_by=recorded_by,
         flag_reason=flag_reading(reading_value, previous_value, average),
+        client_id=client_id,
         meter_id=meter.id,
     )
     db.add(reading)
