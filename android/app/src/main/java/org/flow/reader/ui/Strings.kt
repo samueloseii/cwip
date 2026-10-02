@@ -18,6 +18,7 @@ fun stringRes(@StringRes id: Int, vararg args: Any): String = stringResource(id,
 fun errorMessage(code: String): String = when (code) {
     "invalid_credentials" -> stringRes(R.string.error_invalid_credentials)
     "server_error" -> stringRes(R.string.error_server)
+    "session_expired" -> stringRes(R.string.error_session_expired)
     else -> stringRes(R.string.error_no_connection)
 }
 

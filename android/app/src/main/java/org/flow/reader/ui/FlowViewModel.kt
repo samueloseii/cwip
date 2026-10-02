@@ -1,6 +1,8 @@
 package org.flow.reader.ui
 
 import android.app.Application
+import android.net.ConnectivityManager
+import android.net.Network
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,8 +51,26 @@ class FlowViewModel(app: Application) : AndroidViewModel(app) {
     val pendingCount: StateFlow<Int> = repo.pendingCount
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
+    private val connectivity = app.getSystemService(ConnectivityManager::class.java)
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            viewModelScope.launch {
+                refreshConnectivity()
+                if (container.auth.isSignedIn) refresh()
+            }
+        }
+
+        override fun onLost(network: Network) {
+            viewModelScope.launch { refreshConnectivity() }
+        }
+    }
+
     init {
-        if (container.auth.isSignedIn) refresh()
+        connectivity?.registerDefaultNetworkCallback(networkCallback)
+    }
+
+    override fun onCleared() {
+        connectivity?.unregisterNetworkCallback(networkCallback)
     }
 
     fun refreshConnectivity() {
@@ -89,7 +109,17 @@ class FlowViewModel(app: Application) : AndroidViewModel(app) {
         val outcome = runCatching { repo.sync() }.getOrNull()
         runCatching { repo.downloadMeters() }
             .onFailure {
-                _state.value = _state.value.copy(busy = false, error = describe(it as Exception))
+                if (it is HttpException && it.code() == 401) {
+                    container.auth.clear()
+                    _state.value = _state.value.copy(
+                        busy = false,
+                        signedIn = false,
+                        operator = null,
+                        error = "session_expired",
+                    )
+                } else {
+                    _state.value = _state.value.copy(busy = false, error = describe(it as Exception))
+                }
                 return@launch
             }
         _state.value = _state.value.copy(

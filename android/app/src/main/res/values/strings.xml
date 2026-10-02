@@ -33,6 +33,7 @@
     <string name="sync_failed">Could not sync. Your readings are still saved.</string>
     <string name="error_invalid_credentials">Wrong email or password.</string>
     <string name="error_server">The server returned an error. Try again.</string>
+    <string name="error_session_expired">Your session has expired. Sign in again. Saved readings are kept on this phone.</string>
     <string name="error_no_connection">No connection to the server.</string>
     <string name="readings_history">Recorded readings</string>
     <string name="status_pending">Pending</string>

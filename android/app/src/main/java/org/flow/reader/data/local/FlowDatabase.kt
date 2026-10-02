@@ -92,7 +92,10 @@ abstract class FlowDatabase : RoomDatabase() {
                 context.applicationContext,
                 FlowDatabase::class.java,
                 "flow-reader.db",
-            ).build().also { instance = it }
+            )
+                // Rollback journal commits are fsynced, so a saved reading survives a battery pull.
+                .setJournalMode(RoomDatabase.JournalMode.TRUNCATE)
+                .build().also { instance = it }
         }
     }
 }
