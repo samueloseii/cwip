@@ -1,0 +1,22 @@
+databases:
+  - name: cwip-db
+    plan: free
+    databaseName: cwip
+    user: cwip
+
+services:
+  - type: web
+    name: cwip
+    runtime: python
+    plan: free
+    buildCommand: ./build.sh
+    startCommand: cd backend && python -m app.db.seed && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cwip-db
+          property: connectionURI
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: "3.12.0"
