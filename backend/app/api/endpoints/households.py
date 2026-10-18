@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_role
+from app.api.deps import assert_community_access, get_current_user, require_role
 from app.db.session import get_db
 from app.models.household import Household
 from app.models.user import User, UserRole
@@ -62,12 +62,18 @@ def update_household(
     payload: HouseholdUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(
-        require_role(UserRole.SUPER_ADMIN, UserRole.PARTNER_ADMIN, UserRole.COMMUNITY_ADMIN)
+        require_role(
+            UserRole.SUPER_ADMIN,
+            UserRole.PARTNER_ADMIN,
+            UserRole.COMMUNITY_ADMIN,
+            UserRole.TREASURER,
+        )
     ),
 ):
     household = db.query(Household).filter(Household.id == household_id).first()
     if not household:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Household not found")
+    assert_community_access(current_user, household.community_id)
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(household, field, value)
     db.commit()

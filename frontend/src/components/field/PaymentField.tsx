@@ -38,6 +38,7 @@ export default function PaymentField({ onBack }: Props) {
   const [saved, setSaved] = useState<string[]>([])
   const [online, setOnline] = useState(navigator.onLine)
   const [pendingCount, setPendingCount] = useState(0)
+  const [currency, setCurrency] = useState('USD')
 
   useEffect(() => {
     const goOnline = () => setOnline(true)
@@ -64,6 +65,13 @@ export default function PaymentField({ onBack }: Props) {
       .get('/billing/invoices')
       .then((res) => setInvoices(res.data))
       .catch(() => {})
+    api
+      .get('/communities/')
+      .then((res) => {
+        const c = res.data.find((x: { id: string; currency: string }) => x.id === user.community_id)
+        if (c?.currency) setCurrency(c.currency)
+      })
+      .catch(() => {})
   }, [user?.community_id])
 
   const hhInvoices = invoices.filter(
@@ -82,7 +90,7 @@ export default function PaymentField({ onBack }: Props) {
       household_id: selectedHH,
       invoice_id: oldestUnpaid?.id || null,
       amount: val,
-      currency: oldestUnpaid?.currency || 'USD',
+      currency: oldestUnpaid?.currency || currency,
       payment_method: 'cash',
       payment_date: new Date().toISOString(),
       receipt_number: receiptNumber || undefined,
@@ -152,7 +160,7 @@ export default function PaymentField({ onBack }: Props) {
           <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-100">
             <div>
               <p className="text-sm text-gray-500">Outstanding Balance</p>
-              <p className="text-lg font-bold text-amber-600">{selectedHousehold.outstanding_balance.toFixed(2)}</p>
+              <p className="text-lg font-bold text-amber-600">{currency} {selectedHousehold.outstanding_balance.toFixed(2)}</p>
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-500">Unpaid Invoices</p>

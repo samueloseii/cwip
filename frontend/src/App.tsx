@@ -10,6 +10,7 @@ import BillingPage from './components/billing/BillingPage'
 import MaintenancePage from './components/maintenance/MaintenancePage'
 import AnalyticsPage from './components/reports/AnalyticsPage'
 import FieldView from './components/field/FieldView'
+import CommunityManagerView from './components/community/CommunityManagerView'
 import PrintBill from './components/billing/PrintBill'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -18,7 +19,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function RoleRouter() {
-  const { user, isOperator } = useAuth()
+  const { user, isOperator, isCommunityManager } = useAuth()
 
   if (!user) {
     return (
@@ -32,6 +33,10 @@ function RoleRouter() {
     return <FieldView />
   }
 
+  if (isCommunityManager) {
+    return <CommunityManagerView />
+  }
+
   return null
 }
 
@@ -39,9 +44,18 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      {/* Operator/Treasurer field view */}
+      {/* Operator field view */}
       <Route
         path="/field"
+        element={
+          <ProtectedRoute>
+            <RoleRouter />
+          </ProtectedRoute>
+        }
+      />
+      {/* Community admin / treasurer management view */}
+      <Route
+        path="/manage"
         element={
           <ProtectedRoute>
             <RoleRouter />
@@ -71,7 +85,7 @@ export default function App() {
 }
 
 function AdminOrRedirect() {
-  const { user, isOperator } = useAuth()
+  const { user, isOperator, isCommunityManager } = useAuth()
 
   if (!user) {
     return (
@@ -83,6 +97,10 @@ function AdminOrRedirect() {
 
   if (isOperator) {
     return <Navigate to="/field" replace />
+  }
+
+  if (isCommunityManager) {
+    return <Navigate to="/manage" replace />
   }
 
   return <Layout />

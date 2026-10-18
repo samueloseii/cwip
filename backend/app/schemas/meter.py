@@ -24,6 +24,13 @@ class MeterReadingCreate(BaseModel):
     meter_id: uuid.UUID
 
 
+class MeterReadingUpdate(BaseModel):
+    reading_value: float | None = None
+    reading_date: datetime | None = None
+    notes: str | None = None
+    is_estimated: bool | None = None
+
+
 class MeterResponse(BaseModel):
     id: uuid.UUID
     serial_number: str

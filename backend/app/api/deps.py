@@ -45,3 +45,24 @@ def require_role(*roles: UserRole):
             )
         return current_user
     return role_checker
+
+
+# Roles that manage a single community's data (households, tariffs, corrections).
+COMMUNITY_MANAGER_ROLES = (UserRole.COMMUNITY_ADMIN, UserRole.TREASURER)
+
+
+def assert_community_access(user: User, community_id: uuid.UUID) -> None:
+    """Ensure a community manager only acts on their own community.
+
+    Super admins and partner admins retain organization-wide access. Community
+    admins and treasurers are restricted to the community they administer.
+    """
+    if user.role in (UserRole.SUPER_ADMIN, UserRole.PARTNER_ADMIN):
+        return
+    if user.role in COMMUNITY_MANAGER_ROLES:
+        if user.community_id is not None and user.community_id == community_id:
+            return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="You can only manage your own community",
+    )
